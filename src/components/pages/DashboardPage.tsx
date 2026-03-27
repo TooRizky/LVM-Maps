@@ -62,55 +62,62 @@ export default function DashboardPage() {
             <div className="road-v" style={{ left: '40%', width: '2%' }} />
             <div className="road-v" style={{ left: '60%', width: '3%' }} />
 
-            {/* Boundaries */}
-            <div className="boundary" style={{ left: '0%', top: '0%', right: '40%', bottom: '56%' }} />
-            <div className="boundary" style={{ left: '29%', top: '0%', right: '37%', bottom: '56%' }} />
-            <div className="boundary" style={{ left: '63%', top: '0%', right: '0%', bottom: '43%' }} />
-            <div className="boundary" style={{ left: '0%', top: '47%', right: '63%', bottom: '0%' }} />
+            {/* Boundaries — outline boxes per zone */}
+            <div className="boundary" style={{ left: '0%',  top: '0%',  width: '28%', bottom: '56%' }} />
+            <div className="boundary" style={{ left: '31%', top: '0%',  right: '37%', bottom: '56%' }} />
+            <div className="boundary" style={{ left: '63%', top: '0%',  right: '0%',  bottom: '43%' }} />
+            <div className="boundary" style={{ left: '0%',  top: '47%', right: '63%', bottom: '0%'  }} />
 
-            {/* Kawasan A */}
-            <div className="kw" style={{ left: '0%', top: '0%', right: '40%', height: '44%', background: 'var(--kA)' }} onClick={() => goKawasan('A')}>
+            {/* ── KAWASAN A ──
+                Fixed: was right:40% (width=60%) → center at 30%, covered by B which starts at 29%.
+                Now: width:28% → center at 14% → label clearly visible in its own zone. */}
+            <div className="kw" style={{ left: '0%', top: '0%', width: '28%', height: '44%', background: 'var(--kA)' }} onClick={() => goKawasan('A')}>
               <span className="ltr">A</span>
               <span className="cnt">{kwStats(merchants, 'A').total}</span>
             </div>
-            {/* Kawasan B */}
-            <div className="kw" style={{ left: '29%', top: '0%', right: '37%', height: '44%', background: 'var(--kB)' }} onClick={() => goKawasan('B')}>
+
+            {/* ── KAWASAN B ── left:31% so road at 29-31% is visible between A & B */}
+            <div className="kw" style={{ left: '31%', top: '0%', right: '37%', height: '44%', background: 'var(--kB)' }} onClick={() => goKawasan('B')}>
               <span className="ltr">B</span>
               <span className="cnt">{kwStats(merchants, 'B').total}</span>
             </div>
-            {/* Kawasan C */}
+
+            {/* ── KAWASAN C ── */}
             <div className="kw" style={{ left: '63%', top: '0%', right: '0%', height: '43%', background: 'var(--kC)' }} onClick={() => goKawasan('C')}>
               <span className="ltr">C</span>
               <span className="cnt">{kwStats(merchants, 'C').total}</span>
             </div>
-            {/* Kawasan D */}
-            <div className="kw" style={{ left: '42%', top: '60%', right: '19%', height: '10%', background: 'var(--kD)' }} onClick={() => goKawasan('D')}>
+
+            {/* ── KAWASAN D ── horizontal strip in the middle-lower area */}
+            <div className="kw" style={{ left: '42%', top: '55%', right: '19%', height: '12%', background: 'var(--kD)' }} onClick={() => goKawasan('D')}>
               <span className="ltr" style={{ fontSize: 'clamp(9px,2vw,14px)' }}>D</span>
               <span className="cnt">{kwStats(merchants, 'D').total}</span>
             </div>
-            {/* Kawasan E */}
-            <div className="kw" style={{ left: '0%', top: '47%', width: '8%', height: '7%', background: 'var(--kE)' }} onClick={() => goKawasan('E')}>
+
+            {/* ── KAWASAN E ── narrow vertical strip far left */}
+            <div className="kw" style={{ left: '0%', top: '47%', width: '8%', height: '6%', background: 'var(--kE)' }} onClick={() => goKawasan('E')}>
               <span className="ltr" style={{ fontSize: 'clamp(8px,1.8vw,12px)' }}>E</span>
             </div>
-            <div className="kw vert" style={{ left: '0%', top: '55%', width: '8%', height: '44%', background: 'var(--kE)' }} onClick={() => goKawasan('E')}>
+            <div className="kw vert" style={{ left: '0%', top: '54%', width: '8%', height: '44%', background: 'var(--kE)' }} onClick={() => goKawasan('E')}>
               <span className="ltr">E</span>
               <span className="cnt">{kwStats(merchants, 'E').total}</span>
             </div>
-            {/* Kawasan F */}
-            <div className="kw" style={{ left: '20%', top: '47%', width: '9%', height: '7%', background: 'var(--kF)' }} onClick={() => goKawasan('F')}>
+
+            {/* ── KAWASAN F ── narrow vertical strip, next to E with road gap */}
+            <div className="kw" style={{ left: '20%', top: '47%', width: '9%', height: '6%', background: 'var(--kF)' }} onClick={() => goKawasan('F')}>
               <span className="ltr" style={{ fontSize: 'clamp(8px,1.8vw,12px)' }}>F</span>
             </div>
-            <div className="kw vert" style={{ left: '20%', top: '55%', width: '9%', height: '44%', background: 'var(--kF)' }} onClick={() => goKawasan('F')}>
+            <div className="kw vert" style={{ left: '20%', top: '54%', width: '9%', height: '44%', background: 'var(--kF)' }} onClick={() => goKawasan('F')}>
               <span className="ltr">F</span>
               <span className="cnt">{kwStats(merchants, 'F').total}</span>
             </div>
 
-            {/* Office pins */}
-            <div className="office-pin" style={{ left: '55%', top: '1%', transform: 'translateX(-50%)' }}>
+            {/* ── Office pins ── */}
+            <div className="office-pin" style={{ left: '50%', top: '1%', transform: 'translateX(-50%)' }}>
               <div className="office-icon">🏦</div>
               <div className="office-lbl">Cab Baru</div>
             </div>
-            <div className="office-pin" style={{ left: '42%', top: '29%', transform: 'translateX(-50%)' }}>
+            <div className="office-pin" style={{ left: '36%', top: '26%', transform: 'translateX(-50%)' }}>
               <div className="office-icon">🏦</div>
               <div className="office-lbl">Cab Lama</div>
             </div>

@@ -3,19 +3,12 @@ import { useApp } from '../context/AppContext';
 export default function Header() {
   const {
     filters, setFilters, currentPage, merchants,
-    syncDot, syncing, syncNow, setAddModalOpen,
-    setFilterPanelOpen, filterPanelOpen, setSetupModalOpen,
+    syncDot, syncing, syncNow,
+    setFilterPanelOpen, filterPanelOpen,
+    doExportExcel, exporting,
   } = useApp();
 
   const count = merchants.length;
-
-  const handleKawTab = (kaw: string) => {
-    setFilters({ activeKawasan: kaw });
-    if (currentPage === 'list') {
-      // reset expandedId via filter change — renderList will trigger
-    }
-  };
-
   const showSearch = currentPage === 'list';
 
   return (
@@ -30,20 +23,28 @@ export default function Header() {
           </div>
         </div>
         <div className="hdr-actions">
-          <div className="hdr-pill">{count}/{count}</div>
+          <div className="hdr-pill">{count}</div>
+          <button
+            className="btn-sync"
+            title="Export Excel (urut Kawasan A-F, Nama A-Z)"
+            onClick={doExportExcel}
+            disabled={exporting}
+          >
+            {exporting ? '⏳' : '📥'} {exporting ? 'Export…' : 'Excel'}
+          </button>
           <button
             className="btn-sync"
             onClick={syncNow}
             disabled={syncing}
+            title="Sinkronkan dengan Google Sheets"
           >
-            <span className={`sync-dot ${syncDot === 'offline' ? 'offline' : syncDot === 'syncing' ? 'syncing' : ''}`} />
+            <span className={`sync-dot${syncDot === 'offline' ? ' offline' : syncDot === 'syncing' ? ' syncing' : ''}`} />
             {syncing ? 'Syncing…' : 'Sync'}
           </button>
-          <button className="btn-sync" onClick={() => setSetupModalOpen(true)}>⚙️</button>
         </div>
       </div>
 
-      {/* Search bar — only on list page */}
+      {/* Search + kawasan tabs — only on list page */}
       {showSearch && (
         <>
           <div className="hdr-search" id="searchBarEl">
@@ -72,21 +73,13 @@ export default function Header() {
               <button
                 key={kaw}
                 className={`kaw-tab${filters.activeKawasan === kaw ? ' active' : ''}`}
-                onClick={() => handleKawTab(kaw)}
+                onClick={() => setFilters({ activeKawasan: kaw })}
               >
                 {kaw === 'ALL' ? 'Semua' : `Kaw ${kaw}`}
               </button>
             ))}
           </div>
         </>
-      )}
-
-      {/* FAB shortcut visible on mobile header only on dashboard */}
-      {!showSearch && (
-        <button
-          style={{ display: 'none' }}
-          onClick={() => setAddModalOpen(true)}
-        />
       )}
     </header>
   );

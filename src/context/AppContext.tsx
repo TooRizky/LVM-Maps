@@ -3,24 +3,21 @@ import type { Merchant, Photos, SbConfig, Filters, Page } from '../types';
 import {
   loadMerchants, saveMerchants,
   loadPhotos, savePhotos as storageSavePhotos,
-  loadSbCfg, saveSbCfg, clearSbCfg as storageClearSbCfg,
-  loadScriptUrl, saveScriptUrl as storageSaveScriptUrl,
+  loadSbCfg, loadScriptUrl,
 } from '../lib/storage';
 import { getFiltered, buildPayload } from '../lib/merchantUtils';
-import { apiCall, fetchFromSheets, testConnection } from '../lib/sync';
-import { uploadPhotoToSupabase, testSupabaseConnection } from '../lib/supabase';
+import { apiCall, fetchFromSheets } from '../lib/sync';
+import { uploadPhotoToSupabase } from '../lib/supabase';
 import { SCRIPT_URL, SB_URL, SB_KEY } from '../lib/constants';
+import { exportToExcel } from '../lib/exportExcel';
 
-// ── Sync state ──────────────────────────────────────────────
 interface SyncBarState {
   message: string;
   type: '' | 'loading' | 'error' | 'success';
   show: boolean;
 }
 
-// ── Context shape ────────────────────────────────────────────
 interface AppContextValue {
-  // State
   merchants: Merchant[];
   photos: Photos;
   filters: Filters;
@@ -31,23 +28,19 @@ interface AppContextValue {
   sbCfg: SbConfig;
   scriptUrl: string;
   syncing: boolean;
+  exporting: boolean;
   toast: string;
   lightboxSrc: string;
   filterPanelOpen: boolean;
-  setupModalOpen: boolean;
   addModalOpen: boolean;
   editModalOpen: boolean;
   editingId: number | null;
   confirmModal: { open: boolean; id: number | null; nama: string };
 
-  // Actions
   setFilters: (f: Partial<Filters>) => void;
   setCurrentPage: (p: Page) => void;
   setExpandedId: (id: number | null) => void;
-  setSbCfg: (cfg: SbConfig) => void;
-  setScriptUrl: (url: string) => void;
   setFilterPanelOpen: (v: boolean) => void;
-  setSetupModalOpen: (v: boolean) => void;
   setAddModalOpen: (v: boolean) => void;
   setEditModalOpen: (v: boolean) => void;
   setEditingId: (id: number | null) => void;
@@ -57,7 +50,6 @@ interface AppContextValue {
   showToast: (msg: string) => void;
   showSyncBar: (msg: string, type?: '' | 'loading' | 'error' | 'success') => void;
 
-  // Data actions
   addMerchant: (m: Omit<Merchant, 'id'>, pendingPhotos: string[]) => void;
   updateMerchant: (m: Merchant) => void;
   updateField: (id: number, field: keyof Merchant, value: string) => void;
@@ -66,17 +58,11 @@ interface AppContextValue {
   addPhoto: (merchantId: number, base64: string) => void;
   deletePhoto: (merchantId: number, idx: number) => void;
 
-  // Sync
   syncNow: () => void;
   syncAll: () => void;
   pullFromSheets: () => void;
-  testConn: () => void;
-  saveSupabase: (url: string, key: string) => void;
-  clearSupabase: () => void;
-  testSupabase: (url: string, key: string) => void;
-  saveScriptUrlAction: (url: string) => void;
+  doExportExcel: () => void;
 
-  // Helpers
   getFilteredMerchants: () => Merchant[];
   getPhotos: (id: number) => string[];
 }
@@ -84,24 +70,17 @@ interface AppContextValue {
 const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  // ── Data state ───────────────────────────────────────────────
   const [merchants, setMerchantsState] = useState<Merchant[]>(() => loadMerchants());
   const [photos, setPhotosState] = useState<Photos>(() => loadPhotos());
   const nextId = useRef(Math.max(...(loadMerchants().map(m => Number(m.id) || 0)), 299) + 1);
   const dirtyIds = useRef(new Set<number>());
 
-  // ── Config state ─────────────────────────────────────────────
-  const [sbCfg, setSbCfgState] = useState<SbConfig>(() => {
-    const envCfg = { url: SB_URL, key: SB_KEY };
-    if (envCfg.url && envCfg.key) return envCfg;
-    return loadSbCfg();
-  });
-  const [scriptUrl, setScriptUrlState] = useState<string>(() => {
-    if (SCRIPT_URL) return SCRIPT_URL;
-    return loadScriptUrl();
-  });
+  // Config hardcoded from .env — no setup modal needed
+  const sbCfg: SbConfig = (SB_URL && SB_KEY)
+    ? { url: SB_URL, key: SB_KEY }
+    : loadSbCfg();
+  const scriptUrl: string = SCRIPT_URL || loadScriptUrl();
 
-  // ── UI state ─────────────────────────────────────────────────
   const [filters, setFiltersState] = useState<Filters>({
     searchQ: '', filterBiz: '', filterVisit: '',
     filterHasil: '', filterMandiri: '', filterNama: '',
@@ -112,10 +91,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [syncDot, setSyncDot] = useState<'online' | 'offline' | 'syncing'>('online');
   const [syncBar, setSyncBarState] = useState<SyncBarState>({ message: '', type: '', show: false });
   const [syncing, setSyncing] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [toast, setToast] = useState('');
   const [lightboxSrc, setLightboxSrc] = useState('');
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
-  const [setupModalOpen, setSetupModalOpen] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -128,7 +107,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const syncBarTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Helpers ──────────────────────────────────────────────────
   const setMerchants = useCallback((m: Merchant[]) => {
     setMerchantsState(m);
     saveMerchants(m);
@@ -155,37 +133,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setSyncState = useCallback((s: 'online' | 'offline' | 'syncing') => setSyncDot(s), []);
-
-  const setFilters = useCallback((f: Partial<Filters>) => {
-    setFiltersState(prev => ({ ...prev, ...f }));
-  }, []);
-
-  const setSbCfg = useCallback((cfg: SbConfig) => setSbCfgState(cfg), []);
-  const setScriptUrl = useCallback((url: string) => setScriptUrlState(url), []);
-
+  const setFilters = useCallback((f: Partial<Filters>) => setFiltersState(prev => ({ ...prev, ...f })), []);
   const openLightbox = useCallback((src: string) => setLightboxSrc(src), []);
   const closeLightbox = useCallback(() => setLightboxSrc(''), []);
 
-  // ── Filtered merchants ────────────────────────────────────────
-  const getFilteredMerchants = useCallback(() =>
-    getFiltered(merchants, filters), [merchants, filters]);
-
+  const getFilteredMerchants = useCallback(() => getFiltered(merchants, filters), [merchants, filters]);
   const getPhotos = useCallback((id: number) => photos[id] || [], [photos]);
 
-  // ── Data mutations ────────────────────────────────────────────
+  // ── CRUD ─────────────────────────────────────────────────────
   const addMerchant = useCallback((m: Omit<Merchant, 'id'>, pendingPhotos: string[]) => {
     const id = nextId.current++;
     const newMerchant: Merchant = { ...m, id };
     const newMerchants = [newMerchant, ...merchants];
     const newPhotos = { ...photos };
     if (pendingPhotos.length) newPhotos[id] = [...pendingPhotos];
-
     setMerchants(newMerchants);
     setPhotos(newPhotos);
     dirtyIds.current.add(id);
     showToast('✅ Merchant ditambahkan!');
-
-    // Upload photos to Supabase in background, then auto-sync
     if (pendingPhotos.length) {
       (async () => {
         const uploaded: string[] = [];
@@ -193,11 +158,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const url = await uploadPhotoToSupabase(pendingPhotos[i], id, i, sbCfg, showSyncBar);
           uploaded.push(url);
         }
-        setPhotosState(prev => {
-          const updated = { ...prev, [id]: uploaded };
-          storageSavePhotos(updated);
-          return updated;
-        });
+        setPhotosState(prev => { const u = { ...prev, [id]: uploaded }; storageSavePhotos(u); return u; });
         dirtyIds.current.add(id);
         autoSyncInternal(newMerchants, { ...photos, [id]: uploaded });
       })();
@@ -240,13 +201,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPhotos(newPhotos);
     setExpandedId(null);
     showToast('🗑️ Merchant dihapus');
-
-    const url = scriptUrl;
-    if (url) {
+    if (scriptUrl) {
       try {
         setSyncState('syncing');
         showSyncBar('🔄 Menghapus dari Sheets...', 'loading');
-        await apiCall(url, { action: 'delete', id });
+        await apiCall(scriptUrl, { action: 'delete', id });
         setSyncState('online');
         showSyncBar('✅ Berhasil dihapus dari Sheets!');
       } catch (e) {
@@ -263,22 +222,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const idx = current.length;
       const updated = { ...prev, [merchantId]: [...current, base64] };
       storageSavePhotos(updated);
-
-      // Upload to Supabase in background
-      uploadPhotoToSupabase(base64, merchantId, idx, sbCfg, showSyncBar).then(uploadedUrl => {
-        if (uploadedUrl && uploadedUrl.startsWith('http')) {
+      uploadPhotoToSupabase(base64, merchantId, idx, sbCfg, showSyncBar).then(url => {
+        if (url?.startsWith('http')) {
           setPhotosState(p2 => {
             const arr = [...(p2[merchantId] || [])];
-            arr[idx] = uploadedUrl;
+            arr[idx] = url;
             const p3 = { ...p2, [merchantId]: arr };
             storageSavePhotos(p3);
             return p3;
           });
           dirtyIds.current.add(merchantId);
-          autoSyncInternal(merchants, { ...photos, [merchantId]: (() => { const a=[...(photos[merchantId]||[])]; a[idx]=uploadedUrl; return a; })() });
         }
       }).catch(() => {});
-
       return updated;
     });
     dirtyIds.current.add(merchantId);
@@ -297,185 +252,134 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     dirtyIds.current.add(merchantId);
   }, []);
 
-  // ── Internal auto-sync (uses passed state to avoid stale closure) ──
-  const autoSyncInternal = useCallback((currentMerchants: Merchant[], currentPhotos: Photos) => {
+  // ── Sync internals ────────────────────────────────────────────
+  const autoSyncInternal = useCallback((m: Merchant[], p: Photos) => {
     if (!scriptUrl) return;
     if (syncingRef.current) { pendingSync.current = true; return; }
-    syncNowInternal(currentMerchants, currentPhotos, scriptUrl);
+    syncNowInternal(m, p, scriptUrl);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scriptUrl]);
 
-  const syncNowInternal = useCallback(async (
-    currentMerchants: Merchant[],
-    currentPhotos: Photos,
-    url: string
-  ) => {
+  const syncNowInternal = useCallback(async (m: Merchant[], p: Photos, url: string) => {
     if (syncingRef.current) return;
-    syncingRef.current = true;
-    setSyncing(true);
-    setSyncState('syncing');
+    syncingRef.current = true; setSyncing(true); setSyncState('syncing');
     const hasDirty = dirtyIds.current.size > 0;
-    showSyncBar(`🔄 Menyinkronkan${hasDirty ? ` ${dirtyIds.current.size} data` : ' semua data'}...`, 'loading');
-
+    showSyncBar(`🔄 Menyinkronkan${hasDirty ? ` ${dirtyIds.current.size} data` : ''}...`, 'loading');
     try {
-      // STEP 1: PUSH dirty
       if (hasDirty) {
-        const snapshotDirty = new Set([...dirtyIds.current].map(String));
-        const toSync = currentMerchants.filter(m => snapshotDirty.has(String(m.id)));
+        const snap = new Set([...dirtyIds.current].map(String));
+        const toSync = m.filter(x => snap.has(String(x.id)));
         let res: Record<string, unknown>;
         try {
-          res = await apiCall(url, { action: 'upsert', merchants: buildPayload(toSync, currentPhotos) });
+          res = await apiCall(url, { action: 'upsert', merchants: buildPayload(toSync, p) });
         } catch (upsertErr) {
           const msg = ((upsertErr as Error).message || '').toLowerCase();
           if (msg.includes('unknown') || msg.includes('invalid') || msg.includes('respons tidak valid')) {
-            console.warn('⚠️ upsert tidak didukung Apps Script, fallback ke save penuh...');
-            showSyncBar('🔄 Kompatibilitas: sync penuh...', 'loading');
-            res = await apiCall(url, { action: 'save', merchants: buildPayload(currentMerchants, currentPhotos) });
-          } else { throw upsertErr; }
+            showSyncBar('🔄 Fallback: sync penuh...', 'loading');
+            res = await apiCall(url, { action: 'save', merchants: buildPayload(m, p) });
+          } else throw upsertErr;
         }
-        snapshotDirty.forEach(id => dirtyIds.current.delete(Number(id)));
-        showSyncBar(`🔄 Pushed ${(res['saved'] as number) ?? toSync.length} data, pulling updates...`, 'loading');
+        snap.forEach(id => dirtyIds.current.delete(Number(id)));
+        showSyncBar(`🔄 Pushed ${(res['saved'] as number) ?? toSync.length} data...`, 'loading');
       }
-
-      // STEP 2: PULL latest
       const json = await fetchFromSheets(url);
-
       if (json['merchants'] && (json['merchants'] as Merchant[]).length) {
-        const pulled = (json['merchants'] as Merchant[]).map(m => ({
-          ...m,
-          id: Number(m.id) || m.id,
-        }));
-        // Merge photos (keep local base64)
-        const newPhotos = { ...currentPhotos };
-        (json['merchants'] as (Merchant & { photos?: string })[]).forEach(m => {
-          const numId = Number(m.id) || m.id as unknown as number;
-          if (m.photos) {
-            const urls = m.photos.split('|').filter(Boolean);
-            const local = (newPhotos[numId] || []).filter((p: string) => p.startsWith('data:'));
-            if (urls.length || local.length) newPhotos[numId] = [...urls, ...local];
+        const pulled = (json['merchants'] as Merchant[]).map(x => ({ ...x, id: Number(x.id) || x.id as unknown as number }));
+        const np = { ...p };
+        (json['merchants'] as (Merchant & { photos?: string })[]).forEach(x => {
+          const nid = Number(x.id) || x.id as unknown as number;
+          if (x.photos) {
+            const urls = x.photos.split('|').filter(Boolean);
+            const local = (np[nid] || []).filter((s: string) => s.startsWith('data:'));
+            if (urls.length || local.length) np[nid] = [...urls, ...local];
           }
         });
-
         dirtyIds.current.clear();
-        setMerchants(pulled);
-        setPhotos(newPhotos);
+        setMerchants(pulled); setPhotos(np);
         setSyncState('online');
-        showSyncBar(`✅ Sync lengkap! ${pulled.length} merchant tersinkron.`);
+        showSyncBar(`✅ Sync lengkap! ${pulled.length} merchant.`);
       } else {
-        setSyncState('online');
-        showSyncBar('✅ Sync selesai!', 'success');
+        setSyncState('online'); showSyncBar('✅ Sync selesai!', 'success');
       }
     } catch (e) {
       setSyncState('offline');
-      let msg = (e as Error).message || String(e);
-      if (!msg || msg === 'undefined') msg = 'Gagal terhubung ke Apps Script. Periksa URL dan koneksi.';
-      showSyncBar('❌ ' + msg, 'error');
+      showSyncBar('❌ ' + ((e as Error).message || 'Gagal sync'), 'error');
     } finally {
-      syncingRef.current = false;
-      setSyncing(false);
+      syncingRef.current = false; setSyncing(false);
       if (pendingSync.current && dirtyIds.current.size > 0) {
         pendingSync.current = false;
         setTimeout(() => syncNowInternal(merchants, photos, scriptUrl), 400);
-      } else {
-        pendingSync.current = false;
-      }
+      } else pendingSync.current = false;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Public sync actions ────────────────────────────────────────
   const syncNow = useCallback(() => {
-    if (!scriptUrl) { showSyncBar('❌ Script URL belum diatur. Buka Setup.', 'error'); return; }
+    if (!scriptUrl) { showSyncBar('❌ VITE_SCRIPT_URL belum diisi di .env', 'error'); return; }
     syncNowInternal(merchants, photos, scriptUrl);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [merchants, photos, scriptUrl]);
 
   const syncAll = useCallback(async () => {
     if (syncingRef.current) return;
-    if (!scriptUrl) { showSyncBar('❌ Script URL belum diatur.', 'error'); return; }
+    if (!scriptUrl) { showSyncBar('❌ VITE_SCRIPT_URL belum diisi di .env', 'error'); return; }
     syncingRef.current = true; setSyncing(true); setSyncState('syncing');
-    showSyncBar('🔄 Full sync semua data ke Sheets...', 'loading');
+    showSyncBar('🔄 Full sync ke Sheets...', 'loading');
     try {
       const res = await apiCall(scriptUrl, { action: 'save', merchants: buildPayload(merchants, photos) });
       dirtyIds.current.clear(); setSyncState('online');
-      showSyncBar(`✅ Full sync selesai! ${(res['saved'] as number) ?? merchants.length} merchant tersimpan.`);
+      showSyncBar(`✅ Full sync selesai! ${(res['saved'] as number) ?? merchants.length} merchant.`);
     } catch (e) {
       setSyncState('offline');
-      showSyncBar('❌ Sync gagal: ' + ((e as Error).message || String(e)), 'error');
+      showSyncBar('❌ ' + ((e as Error).message || String(e)), 'error');
     } finally { syncingRef.current = false; setSyncing(false); pendingSync.current = false; }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [merchants, photos, scriptUrl]);
 
   const pullFromSheets = useCallback(async () => {
-    if (!scriptUrl) { showSyncBar('❌ Script URL belum diatur.', 'error'); return; }
+    if (!scriptUrl) { showSyncBar('❌ VITE_SCRIPT_URL belum diisi di .env', 'error'); return; }
     setSyncState('syncing'); showSyncBar('⬇️ Mengambil data dari Sheets...', 'loading');
     try {
       const json = await fetchFromSheets(scriptUrl);
       if (json['merchants'] && (json['merchants'] as Merchant[]).length) {
         const pulled = (json['merchants'] as Merchant[]).map(m => ({ ...m, id: Number(m.id) || m.id as unknown as number }));
-        const newPhotos = { ...photos };
+        const np = { ...photos };
         (json['merchants'] as (Merchant & { photos?: string })[]).forEach(m => {
-          const numId = Number(m.id) || m.id as unknown as number;
+          const nid = Number(m.id) || m.id as unknown as number;
           if (m.photos) {
             const urls = m.photos.split('|').filter(Boolean);
-            const local = (newPhotos[numId] || []).filter((p: string) => p.startsWith('data:'));
-            if (urls.length || local.length) newPhotos[numId] = [...urls, ...local];
+            const local = (np[nid] || []).filter((s: string) => s.startsWith('data:'));
+            if (urls.length || local.length) np[nid] = [...urls, ...local];
           }
         });
-        dirtyIds.current.clear();
-        setMerchants(pulled); setPhotos(newPhotos);
-        setSyncState('online'); showSyncBar(`✅ Berhasil! ${pulled.length} merchant dipull dari Sheets.`);
-        setSetupModalOpen(false);
-      } else { setSyncState('offline'); showSyncBar('ℹ️ Sheets kosong atau belum ada data.', 'error'); }
-    } catch (e) { setSyncState('offline'); showSyncBar('❌ Pull gagal: ' + ((e as Error).message || String(e)), 'error'); }
+        dirtyIds.current.clear(); setMerchants(pulled); setPhotos(np);
+        setSyncState('online'); showSyncBar(`✅ ${pulled.length} merchant dipull dari Sheets.`);
+      } else { setSyncState('offline'); showSyncBar('ℹ️ Sheets kosong.', 'error'); }
+    } catch (e) { setSyncState('offline'); showSyncBar('❌ ' + ((e as Error).message || String(e)), 'error'); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scriptUrl, photos]);
 
-  const testConn = useCallback(async () => {
-    if (!scriptUrl) { showSyncBar('❌ Script URL belum diatur.', 'error'); return; }
-    showSyncBar('🔌 Testing koneksi...', 'loading');
-    try {
-      await testConnection(scriptUrl);
-      showSyncBar('✅ Koneksi berhasil! Apps Script aktif.'); setSyncState('online');
-    } catch (e) { showSyncBar('❌ Gagal: ' + (e as Error).message, 'error'); setSyncState('offline'); }
-  }, [scriptUrl]);
-
-  const saveSupabase = useCallback((url: string, key: string) => {
-    if (!url || !key) { showToast('⚠️ URL dan Key wajib diisi!'); return; }
-    const cfg = { url: url.trim().replace(/\/$/, ''), key: key.trim() };
-    setSbCfgState(cfg); saveSbCfg(cfg);
-    showToast('✅ Supabase tersimpan!');
-  }, []);
-
-  const clearSupabase = useCallback(() => {
-    setSbCfgState({ url: '', key: '' }); storageClearSbCfg();
-    showToast('🗑️ Config Supabase dihapus');
-  }, []);
-
-  const testSupabase = useCallback(async (url: string, key: string) => {
-    await testSupabaseConnection({ url, key }, showSyncBar);
-  }, [showSyncBar]);
-
-  const saveScriptUrlAction = useCallback((url: string) => {
-    if (!url) { showToast('⚠️ Script URL wajib diisi!'); return; }
-    if (!url.includes('script.google.com')) { showToast('⚠️ URL harus dari Google Apps Script'); return; }
-    setScriptUrlState(url); storageSaveScriptUrl(url);
-    showToast('✅ Script URL tersimpan! Siap untuk sync.');
-  }, []);
+  // ── Export Excel ──────────────────────────────────────────────
+  const doExportExcel = useCallback(async () => {
+    if (exporting) return;
+    setExporting(true);
+    await exportToExcel(scriptUrl, merchants, showSyncBar);
+    setExporting(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scriptUrl, merchants, exporting]);
 
   const value: AppContextValue = {
     merchants, photos, filters, currentPage, expandedId,
-    syncDot, syncBar, sbCfg, scriptUrl, syncing,
-    toast, lightboxSrc, filterPanelOpen, setupModalOpen,
+    syncDot, syncBar, sbCfg, scriptUrl, syncing, exporting,
+    toast, lightboxSrc, filterPanelOpen,
     addModalOpen, editModalOpen, editingId, confirmModal,
-    setFilters, setCurrentPage, setExpandedId, setSbCfg, setScriptUrl,
-    setFilterPanelOpen, setSetupModalOpen, setAddModalOpen, setEditModalOpen,
+    setFilters, setCurrentPage, setExpandedId,
+    setFilterPanelOpen, setAddModalOpen, setEditModalOpen,
     setEditingId, setConfirmModal,
     openLightbox, closeLightbox, showToast, showSyncBar,
     addMerchant, updateMerchant, updateField, saveCard, deleteMerchant,
     addPhoto, deletePhoto,
-    syncNow, syncAll, pullFromSheets, testConn,
-    saveSupabase, clearSupabase, testSupabase, saveScriptUrlAction,
+    syncNow, syncAll, pullFromSheets, doExportExcel,
     getFilteredMerchants, getPhotos,
   };
 

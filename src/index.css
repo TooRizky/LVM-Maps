@@ -111,6 +111,7 @@ button { font-family: inherit; }
 }
 .btn-sync:hover { background: rgba(255,255,255,0.18); }
 .btn-sync:disabled { opacity: 0.45; cursor: default; }
+.btn-sync.exporting { background: rgba(245,166,35,0.25); border-color: var(--yellow); color: var(--yellow-lt); }
 .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; flex-shrink: 0; }
 .sync-dot.offline { background: #f87171; }
 .sync-dot.syncing { background: var(--yellow); animation: pulse-dot 0.7s infinite alternate; }
@@ -337,6 +338,22 @@ button { font-family: inherit; }
 .mc-expanded { display: none; padding: 0 12px 14px 18px; border-top: 1px solid var(--border); animation: expIn 0.2s ease; }
 .mc-expanded.open { display: block; }
 @keyframes expIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* On desktop, when card spans full width, show expanded content in 2-col layout */
+@media (min-width: 640px) {
+  .mc.is-expanded .mc-expanded.open {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 24px;
+    column-gap: 24px;
+  }
+  .mc.is-expanded .exp-photo-title { grid-column: 1 / -1; }
+  .mc.is-expanded .exp-photo-row   { grid-column: 1 / -1; }
+  .mc.is-expanded .exp-grid        { grid-column: 1; }
+  .mc.is-expanded .exp-field       { grid-column: 1; }
+  .mc.is-expanded .exp-field:last-of-type { grid-column: 2; margin-top: 0; }
+  .mc.is-expanded .card-btns       { grid-column: 1 / -1; }
+}
 .exp-photo-title { font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 0 7px; }
 .exp-photo-row { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 10px; align-items: flex-start; }
 .photo-thumb-wrap { position: relative; width: 68px; height: 68px; flex-shrink: 0; }
@@ -493,6 +510,8 @@ button { font-family: inherit; }
 @media (min-width: 480px) { .kaw-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 640px) {
   .merchant-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  /* When a card is expanded it should span full width (both columns) */
+  .merchant-list .mc.is-expanded { grid-column: 1 / -1; }
   .kaw-grid { grid-template-columns: repeat(3, 1fr); }
 }
 @media (min-width: 900px) {
@@ -511,4 +530,5 @@ button { font-family: inherit; }
   .desktop-fab { display: flex; }
   .kaw-grid { grid-template-columns: repeat(3, 1fr); }
   .merchant-list { grid-template-columns: 1fr 1fr; }
+  .merchant-list .mc.is-expanded { grid-column: 1 / -1; }
 }

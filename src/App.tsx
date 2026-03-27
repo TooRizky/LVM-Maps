@@ -9,33 +9,24 @@ import DashboardPage from './components/pages/DashboardPage';
 import ListPage from './components/pages/ListPage';
 import AddModal from './components/modals/AddModal';
 import EditModal from './components/modals/EditModal';
-import SetupModal from './components/modals/SetupModal';
 
 function AppInner() {
   const { currentPage, setAddModalOpen } = useApp();
 
   return (
     <>
-      {/* Left sidebar (desktop) / Bottom nav (mobile) */}
       <BottomNav />
-
-      {/* Main content area */}
       <div className="app-right">
         <Header />
         <SyncBar />
-
-        {/* Pages */}
         {currentPage === 'dashboard' && <DashboardPage />}
         {currentPage === 'list'      && <ListPage />}
       </div>
-
       {/* Desktop FAB */}
       <button className="desktop-fab" onClick={() => setAddModalOpen(true)}>＋</button>
 
-      {/* Modals & overlays */}
       <AddModal />
       <EditModal />
-      <SetupModal />
       <ConfirmDialog />
       <Lightbox />
       <Toast />

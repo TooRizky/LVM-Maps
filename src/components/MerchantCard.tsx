@@ -46,7 +46,7 @@ export default function MerchantCard({ merchant: m }: Props) {
   };
 
   return (
-    <div className="mc" id={`card-${m.id}`} style={{ '--kc': kwClr } as React.CSSProperties}>
+    <div className={`mc${isOpen ? ' is-expanded' : ''}`} id={`card-${m.id}`} style={{ '--kc': kwClr } as React.CSSProperties}>
       {/* Left kawasan color strip */}
       <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: kwClr }} />
 
