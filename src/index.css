@@ -376,6 +376,21 @@ button { font-family: inherit; }
   background: var(--surface); outline: none;
 }
 .exp-field input:focus, .exp-field select:focus { border-color: var(--navy-mid); }
+.exp-readonly {
+  width: 100%; padding: 7px 9px;
+  border: 1.5px solid var(--border-md); border-radius: var(--r-xs);
+  font-size: 12px; color: var(--text);
+  background: var(--bg2); min-height: 32px;
+  line-height: 1.4; word-break: break-word;
+}
+.exp-empty { color: var(--muted); font-style: italic; }
+.exp-readonly-hint {
+  margin-top: 10px; padding: 7px 10px;
+  background: #EEF6FF; border-radius: var(--r-xs);
+  font-size: 11px; font-weight: 600; color: var(--navy-mid);
+  text-align: center; cursor: pointer; border: 1.5px dashed #93c5fd;
+}
+.exp-readonly-hint:hover { background: #DBEAFE; }
 .card-btns { display: flex; gap: 6px; margin-top: 10px; }
 .btn-maps { flex: 1; padding: 9px; background: #EEF6FF; color: var(--navy-mid); border-radius: var(--r-xs); font-size: 11px; font-weight: 700; text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center; }
 .btn-save { flex: 1; padding: 9px; background: var(--navy-mid); color: #fff; border: none; border-radius: var(--r-xs); font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }

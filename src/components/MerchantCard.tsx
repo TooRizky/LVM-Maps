@@ -1,4 +1,3 @@
-import { useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { getStatus } from '../lib/merchantUtils';
 import { KAW_HEX, BIZ_CLR, BIZ_EMOJI } from '../lib/constants';
@@ -11,13 +10,11 @@ interface Props {
 export default function MerchantCard({ merchant: m }: Props) {
   const {
     expandedId, setExpandedId,
-    getPhotos, openLightbox, deletePhoto, addPhoto,
-    updateField, saveCard,
+    getPhotos, openLightbox,
     setEditingId, setEditModalOpen,
     setConfirmModal,
   } = useApp();
 
-  const fileRef = useRef<HTMLInputElement>(null);
   const mPh = getPhotos(m.id);
   const isOpen = expandedId === m.id;
   const st = getStatus(m);
@@ -33,16 +30,10 @@ export default function MerchantCard({ merchant: m }: Props) {
     }
   };
 
-  const handleFiles = (files: FileList | null) => {
-    if (!files) return;
-    Array.from(files).forEach(f => {
-      const reader = new FileReader();
-      reader.onload = e => {
-        if (e.target?.result) addPhoto(m.id, e.target.result as string);
-      };
-      reader.readAsDataURL(f);
-    });
-    if (fileRef.current) fileRef.current.value = '';
+  const openEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingId(m.id);
+    setEditModalOpen(true);
   };
 
   return (
@@ -79,37 +70,28 @@ export default function MerchantCard({ merchant: m }: Props) {
         </div>
       </div>
 
-      {/* Expanded section */}
+      {/* Expanded section — read-only view */}
       {isOpen && (
         <div className="mc-expanded open" id={`exp-${m.id}`}>
-          {/* Photos */}
-          <div className="exp-photo-title">📸 Foto {mPh.length ? `(${mPh.length})` : ''}</div>
-          <div className="exp-photo-row" id={`pg-${m.id}`}>
-            {mPh.map((src, i) => (
-              <div className="photo-thumb-wrap" key={i}>
-                <img
-                  src={src}
-                  alt=""
-                  onClick={e => { e.stopPropagation(); openLightbox(src); }}
-                  onError={e => { (e.target as HTMLImageElement).style.opacity = '0.3'; }}
-                />
-                <button className="photo-del" onClick={e => { e.stopPropagation(); deletePhoto(m.id, i); }}>✕</button>
+
+          {/* Photos — view only, click to lightbox */}
+          {mPh.length > 0 && (
+            <>
+              <div className="exp-photo-title">📸 Foto ({mPh.length})</div>
+              <div className="exp-photo-row" id={`pg-${m.id}`}>
+                {mPh.map((src, i) => (
+                  <div className="photo-thumb-wrap" key={i}>
+                    <img
+                      src={src}
+                      alt=""
+                      onClick={e => { e.stopPropagation(); openLightbox(src); }}
+                      onError={e => { (e.target as HTMLImageElement).style.opacity = '0.3'; }}
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
-            <div>
-              <div className="photo-add-btn" onClick={e => { e.stopPropagation(); fileRef.current?.click(); }}>
-                📷<br/>Foto
-              </div>
-            </div>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              multiple
-              style={{ display: 'none' }}
-              onChange={e => { e.stopPropagation(); handleFiles(e.target.files); }}
-            />
-          </div>
+            </>
+          )}
 
           {/* Mandiri & Bank Lain */}
           <div className="exp-grid">
@@ -144,44 +126,32 @@ export default function MerchantCard({ merchant: m }: Props) {
             </div>
           </div>
 
-          {/* Keterangan */}
+          {/* Keterangan — read-only */}
           <div className="exp-field">
             <label>Keterangan</label>
-            <input
-              type="text"
-              defaultValue={m.keterangan || ''}
-              placeholder="Kosong..."
-              onClick={e => e.stopPropagation()}
-              onChange={e => updateField(m.id, 'keterangan', e.target.value)}
-            />
+            <div className="exp-readonly">{m.keterangan || <span className="exp-empty">—</span>}</div>
           </div>
 
-          {/* Visit & Hasil */}
+          {/* Visit & Hasil — read-only */}
           <div className="exp-grid" style={{ marginTop: 7 }}>
             <div className="exp-field">
               <label>Status Visit</label>
-              <select
-                defaultValue={m.visit || ''}
-                onClick={e => e.stopPropagation()}
-                onChange={e => updateField(m.id, 'visit', e.target.value)}
-              >
-                <option value="">Belum</option>
-                <option value="SUDAH">Sudah</option>
-              </select>
+              <div className="exp-readonly">
+                {m.visit === 'SUDAH' ? '✅ Sudah' : '⏳ Belum'}
+              </div>
             </div>
             <div className="exp-field">
               <label>Hasil Visit</label>
-              <input
-                type="text"
-                defaultValue={m.hasil_visit || ''}
-                placeholder="Isi hasil..."
-                onClick={e => e.stopPropagation()}
-                onChange={e => updateField(m.id, 'hasil_visit', e.target.value)}
-              />
+              <div className="exp-readonly">{m.hasil_visit || <span className="exp-empty">—</span>}</div>
             </div>
           </div>
 
-          {/* Action buttons */}
+          {/* Edit hint */}
+          <div className="exp-readonly-hint" onClick={openEdit}>
+            ✏️ Tap Edit untuk mengubah data
+          </div>
+
+          {/* Action buttons — Maps, Edit, Delete only */}
           <div className="card-btns">
             <a
               className="btn-maps"
@@ -190,8 +160,7 @@ export default function MerchantCard({ merchant: m }: Props) {
               rel="noreferrer"
               onClick={e => e.stopPropagation()}
             >📍 Maps</a>
-            <button className="btn-save" onClick={e => { e.stopPropagation(); saveCard(m.id); }}>💾 Simpan</button>
-            <button className="btn-edit-sm" onClick={e => { e.stopPropagation(); setEditingId(m.id); setEditModalOpen(true); }}>✏️ Edit</button>
+            <button className="btn-edit-sm" style={{ flex: 2 }} onClick={openEdit}>✏️ Edit</button>
             <button className="btn-del-sm" onClick={e => { e.stopPropagation(); setConfirmModal({ open: true, id: m.id, nama: m.nama }); }}>🗑️</button>
           </div>
         </div>
