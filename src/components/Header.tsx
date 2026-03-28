@@ -14,12 +14,25 @@ export default function Header() {
     <header className="app-header">
       <div className="hdr-top">
         <div className="hdr-brand">
-          <div className="hdr-logo">LVM</div>
+          {/* Logo Mandiri — taruh file di public/mandiri-icon.png */}
+          <img
+            src="/mandiri-logo.png"
+            alt="Mandiri"
+            width={38}
+            height={38}
+            style={{ borderRadius: 9, flexShrink: 0, objectFit: 'contain' }}
+          />
+
+          {/* Divider */}
+          <div className="hdr-divider" />
+
+          {/* Judul & subtitle */}
           <div className="hdr-text">
             <div className="hdr-title">Mapping Merchant — Cab. Green Ville 16500</div>
-            <div className="hdr-sub">Internal Field Tool · Mandiri</div>
+            <div className="hdr-sub">Internal Field Tool · Bank Mandiri</div>
           </div>
         </div>
+
         <div className="hdr-actions">
           <div className="hdr-pill">{merchants.length}</div>
           <button
