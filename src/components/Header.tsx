@@ -8,12 +8,10 @@ export default function Header() {
     doExportExcel, exporting,
   } = useApp();
 
-  const count = merchants.length;
   const showSearch = currentPage === 'list';
 
   return (
     <header className="app-header">
-      {/* Top row */}
       <div className="hdr-top">
         <div className="hdr-brand">
           <div className="hdr-logo">LVM</div>
@@ -23,31 +21,33 @@ export default function Header() {
           </div>
         </div>
         <div className="hdr-actions">
-          <div className="hdr-pill">{count}</div>
+          <div className="hdr-pill">{merchants.length}</div>
           <button
-            className="btn-sync"
+            className={`btn-sync${exporting ? ' exporting' : ''}`}
             title="Export Excel (urut Kawasan A-F, Nama A-Z)"
             onClick={doExportExcel}
             disabled={exporting}
           >
-            {exporting ? '⏳' : '📥'} {exporting ? 'Export…' : 'Excel'}
+            {exporting ? '⏳' : '📥'} Excel
           </button>
           <button
             className="btn-sync"
             onClick={syncNow}
             disabled={syncing}
-            title="Sinkronkan dengan Google Sheets"
+            title="Refresh data dari Supabase"
           >
-            <span className={`sync-dot${syncDot === 'offline' ? ' offline' : syncDot === 'syncing' ? ' syncing' : ''}`} />
-            {syncing ? 'Syncing…' : 'Sync'}
+            <span className={`sync-dot${
+              syncDot === 'offline'  ? ' offline'  :
+              syncDot === 'syncing' ? ' syncing' : ''
+            }`} />
+            {syncing ? 'Loading…' : 'Sync'}
           </button>
         </div>
       </div>
 
-      {/* Search + kawasan tabs — only on list page */}
       {showSearch && (
         <>
-          <div className="hdr-search" id="searchBarEl">
+          <div className="hdr-search">
             <div className="search-wrap">
               <svg className="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
@@ -66,10 +66,8 @@ export default function Header() {
               <span>⊟</span> Filter
             </button>
           </div>
-
-          {/* Kawasan quick tabs */}
-          <div className="kaw-tabs" id="kawQuickTabs">
-            {['ALL', 'A', 'B', 'C', 'D', 'E', 'F'].map(kaw => (
+          <div className="kaw-tabs">
+            {['ALL','A','B','C','D','E','F'].map(kaw => (
               <button
                 key={kaw}
                 className={`kaw-tab${filters.activeKawasan === kaw ? ' active' : ''}`}

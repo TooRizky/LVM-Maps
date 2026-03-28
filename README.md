@@ -1,6 +1,8 @@
-# 🗺️ LVM-Maps — Mapping Merchant React App
+# 🗺️ LVM-Maps — Mapping Merchant (Full Supabase Edition)
 
-Aplikasi mapping merchant internal **Bank Mandiri Cab. Green Ville 16500**, dibangun ulang dari HTML single-file ke **React + Vite + TypeScript** dengan fitur tambahan **Filter by Nama Merchant**.
+Aplikasi mapping merchant internal **Bank Mandiri Cab. Green Ville 16500**.
+Dibangun dengan **React + Vite + TypeScript**, menggunakan **Supabase** sebagai
+database dan storage satu-satunya (tidak lagi memakai Google Apps Script).
 
 ---
 
@@ -9,273 +11,323 @@ Aplikasi mapping merchant internal **Bank Mandiri Cab. Green Ville 16500**, diba
 ```
 lvm-maps/
 ├── public/
-│   └── vite.svg
+│   └── mandiri-icon.png       ← Taruh logo Mandiri di sini (lihat bagian Favicon)
 ├── src/
 │   ├── components/
 │   │   ├── pages/
-│   │   │   ├── DashboardPage.tsx   ← Halaman denah & statistik kawasan
-│   │   │   └── ListPage.tsx        ← Halaman daftar merchant
+│   │   │   ├── DashboardPage.tsx   ← Denah kawasan + statistik
+│   │   │   └── ListPage.tsx        ← Daftar merchant + filter
 │   │   ├── modals/
-│   │   │   ├── AddModal.tsx        ← Modal tambah merchant baru
-│   │   │   ├── EditModal.tsx       ← Modal edit merchant
-│   │   │   └── SetupModal.tsx      ← Modal konfigurasi URL & Supabase
-│   │   ├── BottomNav.tsx           ← Navigasi bawah (mobile) / sidebar (desktop)
-│   │   ├── ConfirmDialog.tsx       ← Dialog konfirmasi hapus
-│   │   ├── FilterPanel.tsx         ← Panel filter (incl. filter by nama) ⭐NEW
-│   │   ├── Header.tsx              ← Header + search bar + kawasan tabs
-│   │   ├── Lightbox.tsx            ← Lightbox preview foto
-│   │   ├── MerchantCard.tsx        ← Card merchant dengan expand detail
-│   │   ├── StatsStrip.tsx          ← Strip statistik (Total/Visit/Mandiri/Done)
-│   │   ├── SyncBar.tsx             ← Bar status sinkronisasi
-│   │   └── Toast.tsx               ← Toast notification
+│   │   │   ├── AddModal.tsx        ← Form tambah merchant
+│   │   │   └── EditModal.tsx       ← Form edit merchant (bug fix: visit/keterangan)
+│   │   ├── BottomNav.tsx
+│   │   ├── ConfirmDialog.tsx
+│   │   ├── FilterPanel.tsx         ← Filter by nama merchant (fitur baru)
+│   │   ├── Header.tsx              ← Tombol Sync + Export Excel
+│   │   ├── Lightbox.tsx
+│   │   ├── MerchantCard.tsx        ← Card read-only, edit via modal
+│   │   ├── StatsStrip.tsx
+│   │   ├── SyncBar.tsx
+│   │   └── Toast.tsx
 │   ├── context/
-│   │   └── AppContext.tsx          ← Global state (React Context + hooks)
+│   │   └── AppContext.tsx          ← Global state, semua operasi Supabase
 │   ├── lib/
-│   │   ├── constants.ts            ← Konstanta (warna kawasan, emoji, dsb)
-│   │   ├── merchantUtils.ts        ← Fungsi filter, stats, status, payload
-│   │   ├── storage.ts              ← localStorage read/write helpers
-│   │   ├── supabase.ts             ← Upload foto ke Supabase Storage
-│   │   └── sync.ts                 ← Komunikasi Google Apps Script API
-│   ├── types/
-│   │   └── index.ts                ← TypeScript types & interfaces
+│   │   ├── constants.ts            ← Warna kawasan, emoji, tipe bisnis
+│   │   ├── exportExcel.ts          ← Export xlsx dari Supabase + link foto
+│   │   ├── merchantUtils.ts        ← Filter, stats, sort
+│   │   ├── storage.ts              ← localStorage (offline cache saja)
+│   │   └── supabaseClient.ts       ← REST API client (CRUD + Storage)
+│   ├── types/index.ts
 │   ├── App.tsx
-│   ├── App.css
-│   ├── index.css                   ← Semua design tokens & CSS global
-│   ├── main.tsx
-│   └── vite-env.d.ts
-├── .env                            ← ❌ JANGAN di-commit (buat dari .env.example)
-├── .env.example                    ← ✅ Template env vars
+│   ├── index.css
+│   └── main.tsx
+├── .env                    ← Buat dari .env.example (JANGAN di-commit)
+├── .env.example
 ├── .gitignore
 ├── index.html
-├── package.json
-├── tsconfig.json
-├── tsconfig.app.json
-├── tsconfig.node.json
-└── vite.config.ts
+└── package.json
 ```
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Clone & Install
-
 ```bash
-# Clone repo
+# 1. Clone repo
 gh repo clone TooRizky/lvm-maps
 cd lvm-maps
 
-# Install dependencies
+# 2. Install dependencies
 npm install
-```
 
-### 2. Konfigurasi Environment
-
-```bash
-# Salin template
+# 3. Setup environment
 cp .env.example .env
+# → Edit .env, isi VITE_SUPABASE_URL dan VITE_SUPABASE_KEY
+
+# 4. Jalankan
+npm run dev
+# Buka http://localhost:5173
 ```
 
-Buka `.env` dan isi nilai berikut:
+---
+
+## 🗄️ Setup Supabase — Langkah Lengkap
+
+### Step 1 — Buat Project Supabase
+
+1. Buka [supabase.com](https://supabase.com) → **New Project**
+2. Pilih nama project, password database, dan region **Southeast Asia (Singapore)**
+3. Tunggu project selesai dibuat (~2 menit)
+
+---
+
+### Step 2 — Buat Tabel `merchants`
+
+Buka **SQL Editor** di Supabase Dashboard, lalu jalankan SQL berikut:
+
+```sql
+-- ═══════════════════════════════════════════════════════════
+--  LVM-MAPS — Tabel merchants
+--  Jalankan di Supabase SQL Editor
+-- ═══════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS public.merchants (
+  id            BIGINT          PRIMARY KEY,
+  nama          TEXT            NOT NULL DEFAULT '',
+  business      TEXT            NOT NULL DEFAULT '',
+  kawasan       TEXT            NOT NULL DEFAULT '',
+  mandiri_rek   TEXT            NOT NULL DEFAULT '',
+  mandiri_edc   TEXT            NOT NULL DEFAULT '',
+  mandiri_qr    TEXT            NOT NULL DEFAULT '',
+  bank_lain_edc TEXT            NOT NULL DEFAULT '',
+  bank_lain_qr  TEXT            NOT NULL DEFAULT '',
+  visit         TEXT            NOT NULL DEFAULT '',
+  hasil_visit   TEXT            NOT NULL DEFAULT '',
+  keterangan    TEXT            NOT NULL DEFAULT '',
+  photos        TEXT            NOT NULL DEFAULT '',
+  updated_at    TIMESTAMPTZ     NOT NULL DEFAULT NOW()
+);
+
+-- Index untuk sorting (kawasan A-F, lalu nama A-Z)
+CREATE INDEX IF NOT EXISTS merchants_kawasan_nama_idx
+  ON public.merchants (kawasan ASC, nama ASC);
+
+-- Index untuk lookup cepat per kawasan
+CREATE INDEX IF NOT EXISTS merchants_kawasan_idx
+  ON public.merchants (kawasan);
+
+-- Trigger auto-update kolom updated_at
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER merchants_updated_at
+  BEFORE UPDATE ON public.merchants
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+```
+
+---
+
+### Step 3 — Aktifkan Row Level Security (RLS)
+
+```sql
+-- Aktifkan RLS pada tabel merchants
+ALTER TABLE public.merchants ENABLE ROW LEVEL SECURITY;
+
+-- Policy: izinkan semua operasi dari anon key
+-- (Cocok untuk aplikasi internal tim, tidak perlu login)
+CREATE POLICY "Allow all for anon"
+  ON public.merchants
+  FOR ALL
+  TO anon
+  USING (true)
+  WITH CHECK (true);
+```
+
+> **Catatan keamanan:** Policy di atas cocok untuk aplikasi internal tim.
+> Jika butuh autentikasi per-user, ganti `TO anon` dengan `TO authenticated`
+> dan tambahkan kolom `user_id` pada tabel.
+
+---
+
+### Step 4 — Buat Storage Bucket untuk Foto
+
+1. Di Supabase Dashboard, buka **Storage**
+2. Klik **New Bucket**
+3. Isi:
+   - Name: `merchant-photos`
+   - Public bucket: **✅ AKTIFKAN** (agar URL foto bisa diakses langsung)
+4. Klik **Create bucket**
+
+Lalu set policy Storage agar bisa upload:
+
+```sql
+-- Policy Storage: izinkan upload dari anon
+INSERT INTO storage.policies (name, bucket_id, operation, definition)
+VALUES
+  ('Allow anon upload',  'merchant-photos', 'INSERT', 'true'),
+  ('Allow anon read',    'merchant-photos', 'SELECT', 'true'),
+  ('Allow anon delete',  'merchant-photos', 'DELETE', 'true');
+```
+
+Atau via Dashboard: **Storage → merchant-photos → Policies → New Policy → Full access → Save**
+
+---
+
+### Step 5 — Ambil API Keys
+
+1. Buka **Settings → API**
+2. Copy:
+   - **Project URL**: `https://xxxxxxxxxxxx.supabase.co`
+   - **anon public** key: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
+
+---
+
+### Step 6 — Isi File `.env`
 
 ```env
-VITE_SCRIPT_URL=https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec
-VITE_SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
-VITE_SUPABASE_KEY=your_supabase_anon_key_here
+VITE_SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
+VITE_SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
-> **Catatan:** Jika `.env` tidak diisi, konfigurasi tetap bisa dilakukan secara manual melalui menu **⚙️ Setup** di dalam aplikasi. Data disimpan ke `localStorage`.
-
-### 3. Jalankan Development Server
-
-```bash
-npm run dev
-```
-
-Buka browser di `http://localhost:5173`
-
-### 4. Build untuk Production
-
-```bash
-npm run build
-npm run preview   # preview hasil build
-```
+> ⚠️ **JANGAN commit file `.env`!** File ini sudah ada di `.gitignore`.
 
 ---
 
-## 🔧 Setup Google Apps Script (Wajib untuk Sync ke Sheets)
-
-### Langkah-langkah:
-
-1. **Buka Google Sheets** → buat spreadsheet baru (beri nama misal `LVM-Merchants`)
-
-2. Klik **Extensions → Apps Script**
-
-3. **Hapus** semua kode default, lalu **tempel** kode berikut:
-
-```javascript
-const SHEET_NAME = 'Merchants';
-
-function doGet(e) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(SHEET_NAME);
-  if (!sheet) { sheet = ss.insertSheet(SHEET_NAME); initHeaders(sheet); }
-  const data = sheet.getDataRange().getValues();
-  if (data.length < 2) return jsonResponse({ merchants: [] });
-  const headers = data[0];
-  const merchants = data.slice(1).map(row => {
-    const obj = {};
-    headers.forEach((h, i) => obj[h] = row[i] !== undefined ? String(row[i]) : '');
-    return obj;
-  });
-  return jsonResponse({ merchants });
-}
-
-function doPost(e) {
-  const body = JSON.parse(e.postData.contents);
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(SHEET_NAME);
-  if (!sheet) { sheet = ss.insertSheet(SHEET_NAME); initHeaders(sheet); }
-
-  if (body.action === 'save') {
-    sheet.clearContents(); initHeaders(sheet);
-    const rows = body.merchants.map(m => headerOrder().map(h => m[h] || ''));
-    if (rows.length) sheet.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
-    return jsonResponse({ ok: true, saved: rows.length });
-  }
-  if (body.action === 'upsert') {
-    const headers = headerOrder();
-    const existing = sheet.getDataRange().getValues();
-    const idCol = headers.indexOf('id');
-    body.merchants.forEach(m => {
-      const rowIdx = existing.findIndex((r, i) => i > 0 && String(r[idCol]) === String(m.id));
-      const rowData = headers.map(h => m[h] || '');
-      if (rowIdx > 0) {
-        sheet.getRange(rowIdx + 1, 1, 1, rowData.length).setValues([rowData]);
-        existing[rowIdx] = rowData;
-      } else { sheet.appendRow(rowData); existing.push(rowData); }
-    });
-    return jsonResponse({ ok: true, saved: body.merchants.length });
-  }
-  if (body.action === 'delete') {
-    const headers = headerOrder();
-    const idCol = headers.indexOf('id');
-    const data = sheet.getDataRange().getValues();
-    for (let i = data.length - 1; i >= 1; i--) {
-      if (String(data[i][idCol]) === String(body.id)) { sheet.deleteRow(i + 1); break; }
-    }
-    return jsonResponse({ ok: true });
-  }
-  return jsonResponse({ error: 'Unknown action: ' + body.action });
-}
-
-function headerOrder() {
-  return ['id','nama','business','kawasan','mandiri_rek','mandiri_edc','mandiri_qr',
-          'bank_lain_edc','bank_lain_qr','visit','hasil_visit','keterangan','photos','updated_at'];
-}
-function initHeaders(sheet) { sheet.appendRow(headerOrder()); }
-function jsonResponse(data) {
-  return ContentService.createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-```
-
-4. Klik **Deploy → New Deployment**
-   - Type: **Web App**
-   - Execute as: **Me**
-   - Who has access: **Anyone**
-   - Klik **Deploy** → **Authorize** → **Deploy**
-
-5. **Copy URL** yang dihasilkan (format: `https://script.google.com/macros/s/XXXXX/exec`)
-
-6. Paste URL ke `.env`:
-   ```env
-   VITE_SCRIPT_URL=https://script.google.com/macros/s/XXXXX/exec
-   ```
-   Atau buka aplikasi → ⚙️ Setup → masukkan URL → klik **Simpan URL**
-
-> ⚠️ **Setiap kali kode Apps Script diubah**, harus **Deploy ulang** (bukan edit deployment lama — buat New Deployment baru).
-
----
-
-## ☁️ Setup Supabase (Untuk Penyimpanan Foto)
-
-### Langkah-langkah:
-
-1. Buka [supabase.com](https://supabase.com) → buat akun / login
-
-2. **Create New Project** → pilih region terdekat (Singapore)
-
-3. Setelah project siap, buka **Storage → Create Bucket**:
-   - Name: `merchant-photos`
-   - Public bucket: **✅ YES** (agar URL foto bisa diakses publik)
-
-4. Buka **Settings → API**:
-   - Copy **Project URL** → `https://xxx.supabase.co`
-   - Copy **anon public** key
-
-5. Paste ke `.env`:
-   ```env
-   VITE_SUPABASE_URL=https://xxx.supabase.co
-   VITE_SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-   ```
-
-6. (Opsional) Atur **RLS Policy** untuk bucket agar upload bisa dilakukan:
-   - Storage → `merchant-photos` → Policies
-   - Tambahkan policy: **Allow insert for anon users** atau disable RLS
-
-> 💡 Jika Supabase tidak dikonfigurasi, foto tetap tersimpan lokal di `localStorage` browser (base64). Foto tidak akan sync ke Sheets sampai diupload ke Supabase.
-
----
-
-## ⭐ Fitur Baru: Filter by Nama Merchant
-
-Filter ini ada di panel **Filter** (tombol `⊟ Filter` di header, hanya muncul di halaman **Daftar**).
-
-**Cara kerja:**
-- Ketik nama merchant untuk mencari (live search)
-- Pilih dari dropdown yang muncul untuk exact match
-- Klik `✕` untuk clear filter nama
-- Filter nama **bisa dikombinasikan** dengan filter lain (Kawasan, Tipe Bisnis, Status Visit, dll)
-
-**Contoh use case:**
-- Cari semua transaksi untuk "Warung Makan Padang" di semua kawasan
-- Filter merchant "Indomaret" kawasan A yang belum di-visit
-
----
-
-## 🔑 Environment Variables — Referensi Lengkap
+## 🔑 Environment Variables
 
 | Variable | Wajib | Keterangan |
 |---|---|---|
-| `VITE_SCRIPT_URL` | ✅ Untuk sync | URL Google Apps Script Web App deployment |
-| `VITE_SUPABASE_URL` | ⚠️ Untuk foto | Project URL dari Supabase dashboard |
-| `VITE_SUPABASE_KEY` | ⚠️ Untuk foto | Anon/service_role key dari Supabase |
+| `VITE_SUPABASE_URL` | ✅ | Project URL dari Supabase Dashboard → Settings → API |
+| `VITE_SUPABASE_KEY` | ✅ | `anon public` key dari Supabase Dashboard → Settings → API |
 
 > Semua variabel harus diawali `VITE_` agar dapat diakses oleh Vite/React di sisi client.
 
-> ⚠️ **JANGAN** commit file `.env` ke repository karena mengandung credentials. File `.env` sudah terdaftar di `.gitignore`.
+---
+
+## 🗃️ Skema Database — Detail Kolom
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | `BIGINT` PK | ID unik merchant (auto dari app, mulai 300) |
+| `nama` | `TEXT` | Nama toko / merchant |
+| `business` | `TEXT` | Tipe bisnis: `F&B`, `PERDAGANGAN`, `JASA`, `HEALTHCARE`, `EDUCATION`, `COMPANY`, `SUPERMARKET`, `IBADAH`, `OTHER` |
+| `kawasan` | `TEXT` | Kawasan: `A`, `B`, `C`, `D`, `E`, `F` |
+| `mandiri_rek` | `TEXT` | Rekening Mandiri: `'V'` atau `''` |
+| `mandiri_edc` | `TEXT` | EDC Mandiri: `'V'` atau `''` |
+| `mandiri_qr` | `TEXT` | QR/QRIS Mandiri: `'V'` atau `''` |
+| `bank_lain_edc` | `TEXT` | EDC Bank Lain: `'V'` atau `''` |
+| `bank_lain_qr` | `TEXT` | QR Bank Lain: `'V'` atau `''` |
+| `visit` | `TEXT` | Status visit: `'SUDAH'` atau `''` |
+| `hasil_visit` | `TEXT` | Catatan hasil kunjungan: `FOLLOW UP`, `SUDAH`, `TIDAK BERMINAT`, dsb |
+| `keterangan` | `TEXT` | Catatan bebas: EDC BCA, ANCHOR, dsb |
+| `photos` | `TEXT` | Public URL foto, dipisah pipe `\|`. Contoh: `https://...jpg\|https://...jpg` |
+| `updated_at` | `TIMESTAMPTZ` | Auto-update via trigger |
 
 ---
 
-## 🏗️ Arsitektur State Management
+## 🔄 Arsitektur & Alur Data
 
 ```
-AppContext (React Context)
-├── merchants[]          ← Data merchant (sync ke localStorage)
-├── photos{}             ← Foto per merchant (localStorage, upgrade ke Supabase URL)
-├── filters              ← Active filters (searchQ, filterBiz, filterVisit, filterNama, ...)
-├── syncDot              ← Status sync: online | offline | syncing
-├── dirtyIds (ref)       ← Set ID merchant yang berubah, belum di-sync
-└── Actions
-    ├── addMerchant()    → tambah, upload foto bg, autoSync
-    ├── updateMerchant() → edit, autoSync
-    ├── deleteMerchant() → hapus lokal + call delete ke Sheets
-    ├── saveCard()       → mark dirty, simpan, autoSync
-    ├── syncNow()        → push dirty → pull latest
-    ├── syncAll()        → push semua data
-    └── pullFromSheets() → ambil semua dari Sheets
+Supabase PostgreSQL (source of truth)
+       ↕  REST API (PostgREST)
+AppContext.tsx
+  ├── Saat mount: dbFetchAll() → setMerchants() + setPhotos()
+  ├── Add merchant: optimistic update lokal → upload foto Storage → dbUpsert()
+  ├── Edit merchant: optimistic update lokal → dbUpsert()
+  ├── Delete: optimistic update lokal → dbDelete()
+  ├── Add foto: preview lokal → dbUploadPhoto() Storage → dbUpsert() (update photos field)
+  └── Sync button: dbFetchAll() → setMerchants() + setPhotos()
+       ↕
+localStorage (offline cache — bukan source of truth)
+  • saveMerchants() / loadMerchants() → gv_v4b
+  • savePhotos() / loadPhotos() → gv_photos_v4b
+  • Dipakai saat offline atau Supabase tidak terkonfigurasi
 ```
+
+**Optimistic Updates:** Setiap operasi CRUD langsung update UI lokal terlebih dahulu,
+kemudian sync ke Supabase di background. Jika Supabase gagal, tampil error di SyncBar
+tanpa mengganggu tampilan.
+
+---
+
+## 📥 Fitur Export Excel
+
+Tombol **`📥 Excel`** di header menghasilkan file `LVM-Merchant-DD-MM-YYYY.xlsx` dengan:
+
+- **Sheet 1 — Data Merchant:** Semua merchant diurutkan Kawasan A→F, lalu Nama A→Z
+- **Sheet 2 — Ringkasan:** Total per kawasan, sudah/belum visit
+
+**Kolom yang diexport:**
+
+| Kolom | Keterangan |
+|---|---|
+| No | Nomor urut |
+| Kawasan | A–F |
+| Nama Merchant | Nama toko |
+| Tipe Bisnis | F&B, PERDAGANGAN, dsb |
+| Rek. Mandiri | ✓ atau - |
+| EDC Mandiri | ✓ atau - |
+| QR Mandiri | ✓ atau - |
+| EDC Bank Lain | ✓ atau - |
+| QR Bank Lain | ✓ atau - |
+| Status Visit | Sudah Visit / Belum Visit |
+| Hasil Visit | Teks hasil kunjungan |
+| Keterangan | Catatan bebas |
+| **Link Foto** | **URL publik foto dari Supabase Storage** |
+
+> Export selalu mencoba fetch data terbaru dari Supabase terlebih dahulu.
+> Jika Supabase tidak tersedia, fallback ke data lokal (tanpa link foto Supabase).
+
+---
+
+## 🐛 Bug Fixes (dari versi sebelumnya)
+
+### Bug 1 — Status Visit berubah jadi "Belum" setelah Edit
+
+**Root cause:** `useEffect` di `EditModal.tsx` menggunakan `[m?.id]` sebagai dependency.
+Ketika modal dibuka dua kali untuk merchant yang sama, `m?.id` tidak berubah → `useEffect` tidak re-run → state visit yang sudah diubah user (tapi belum disimpan) masih tertinggal.
+
+**Fix:**
+```tsx
+// SEBELUM (buggy)
+useEffect(() => { if(m) { setVisit(m.visit || ''); } }, [m?.id]);
+
+// SESUDAH (fixed)
+useEffect(() => {
+  if (!editModalOpen || !m) return;
+  setVisit(m.visit || '');           // m.visit → status visit
+  setHasilVisit(m.hasil_visit || ''); // m.hasil_visit → hasil kunjungan
+  setKeterangan(m.keterangan || ''); // m.keterangan → catatan bebas
+}, [editingId, editModalOpen]);      // re-run setiap modal dibuka
+```
+
+### Bug 2 — Keterangan masuk ke Hasil Visit
+
+**Root cause:** Urutan field di form tidak konsisten dengan label — user salah mengisi
+karena label tidak cukup jelas membedakan "Hasil Visit" dan "Keterangan".
+
+**Fix:** Label dipertegas dengan emoji + deskripsi placeholder yang berbeda:
+- `🚶 Status Visit` → dropdown Belum/Sudah
+- `📋 Hasil Visit` → teks singkat: FOLLOW UP, SUDAH, TIDAK BERMINAT
+- `📝 Keterangan` → catatan bebas: EDC BCA, ANCHOR, dsb
+
+---
+
+## 🖼️ Favicon / Logo Mandiri
+
+Letakkan file logo Mandiri di folder `public/`, lalu aktifkan di `index.html`:
+
+```html
+<!-- index.html — uncomment baris ini: -->
+<link rel="icon" type="image/png" href="/mandiri-icon.png" />
+```
+
+Format yang didukung: `.png` (disarankan 32×32 atau 64×64), `.ico`, `.svg`.
 
 ---
 
@@ -283,24 +335,24 @@ AppContext (React Context)
 
 | Script | Keterangan |
 |---|---|
-| `npm run dev` | Jalankan development server (port 5173) |
+| `npm run dev` | Development server (`http://localhost:5173`) |
 | `npm run build` | Build production ke folder `dist/` |
 | `npm run preview` | Preview hasil build |
-| `npm run lint` | Lint dengan ESLint |
+| `npm run lint` | ESLint check |
 
 ---
 
 ## 📦 Dependencies
 
-| Package | Versi | Keterangan |
-|---|---|---|
-| react | ^18.3.1 | UI library |
-| react-dom | ^18.3.1 | DOM renderer |
-| vite | ^6.0.1 | Build tool & dev server |
-| typescript | ~5.6.2 | Type safety |
-| @vitejs/plugin-react | ^4.3.3 | Vite React plugin (SWC) |
+| Package | Keterangan |
+|---|---|
+| `react` + `react-dom` | UI library |
+| `xlsx` | Generate file `.xlsx` untuk export |
+| `vite` + `@vitejs/plugin-react` | Build tool & dev server |
+| `typescript` | Type safety |
 
-Tidak ada dependency UI library tambahan — semua styling murni CSS custom sesuai design original.
+> **Tidak** menggunakan `@supabase/supabase-js` — semua komunikasi Supabase
+> melalui REST API langsung (`fetch`) untuk menjaga bundle sekecil mungkin.
 
 ---
 
@@ -309,9 +361,16 @@ Tidak ada dependency UI library tambahan — semua styling murni CSS custom sesu
 ### Vercel (Recommended)
 
 ```bash
-npm install -g vercel
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy
 vercel
-# Ikuti prompt, set environment variables di Vercel dashboard
+
+# Set env vars di Vercel Dashboard:
+# Settings → Environment Variables → Add:
+#   VITE_SUPABASE_URL = https://xxx.supabase.co
+#   VITE_SUPABASE_KEY = eyJ...
 ```
 
 ### Netlify
@@ -319,36 +378,29 @@ vercel
 ```bash
 npm run build
 # Upload folder dist/ ke Netlify
-# Set env vars di Netlify → Site Settings → Environment Variables
+# Atau hubungkan repo GitHub → Auto deploy
+# Set env vars di: Site Settings → Environment Variables
 ```
 
 ### Self-hosted (Nginx)
 
 ```bash
 npm run build
-# Salin folder dist/ ke server
-# Nginx config: try_files $uri $uri/ /index.html
+# Copy dist/ ke server
+# Nginx config (SPA routing):
+# location / { try_files $uri $uri/ /index.html; }
 ```
 
 ---
 
-## 🐛 Troubleshooting
+## 🔧 Troubleshooting
 
 | Masalah | Solusi |
 |---|---|
-| Sync gagal: "Apps Script mengembalikan HTML" | Re-deploy Apps Script dengan Who has access: **Anyone** (bukan pribadi) |
-| Sync gagal: "Respons kosong" | Re-deploy Apps Script, pastikan URL `/exec` bukan `/dev` |
-| Upload foto gagal: "Bucket tidak ditemukan" | Buat bucket bernama `merchant-photos` di Supabase Storage |
-| Upload foto gagal: "Forbidden" | Set bucket ke **Public** atau tambahkan RLS policy untuk insert |
-| Data hilang setelah refresh | Pastikan tidak incognito mode; `localStorage` harus aktif |
-| `VITE_` env vars tidak terbaca | Restart `npm run dev` setelah mengubah `.env` |
-
----
-
-## 📝 Catatan Developer
-
-- **Logic sync tidak diubah** dari versi HTML asli — hanya direfactor ke TypeScript/React
-- **Filter by Nama** menggunakan exact match dari dropdown; search bar header menggunakan partial match
-- Foto disimpan sebagai `base64` di localStorage, lalu **diupgrade** ke Supabase URL secara background setelah upload berhasil
-- `dirtyIds` digunakan untuk **incremental sync** — hanya data yang berubah yang di-push ke Sheets
-- App bekerja **offline-first**: semua data tersimpan lokal, sync ke Sheets hanya jika URL dikonfigurasi
+| `Supabase belum dikonfigurasi` saat app dibuka | Pastikan `.env` sudah diisi dan dev server di-restart (`npm run dev`) |
+| Upload foto gagal: `Bucket tidak ditemukan` | Buat bucket bernama `merchant-photos` di Supabase Storage |
+| Upload foto gagal: `Forbidden 403` | Set bucket ke **Public** atau tambah Storage Policy insert untuk anon |
+| Data tidak tersimpan: `RLS violation` | Pastikan RLS policy sudah dibuat (lihat Step 3) |
+| Export Excel: `Link Foto` kosong semua | Foto tersimpan sebagai base64 lokal, belum diupload ke Supabase Storage |
+| `VITE_` env vars tidak terbaca | Restart `npm run dev` setelah ubah `.env` |
+| Status Visit berubah jadi Belum setelah Edit | Bug sudah diperbaiki di versi ini (`EditModal.tsx` — fix `useEffect` deps) |

@@ -6,10 +6,10 @@ import type { Merchant } from '../../types';
 export default function AddModal() {
   const { addModalOpen, setAddModalOpen, addMerchant } = useApp();
 
-  const [nama, setNama] = useState('');
-  const [business, setBusiness] = useState<string>('F&B');
-  const [kawasan, setKawasan] = useState<string>('A');
-  const [visit, setVisit] = useState('');
+  const [nama,       setNama]       = useState('');
+  const [business,   setBusiness]   = useState<string>('F&B');
+  const [kawasan,    setKawasan]    = useState<string>('A');
+  const [visit,      setVisit]      = useState('');
   const [hasilVisit, setHasilVisit] = useState('');
   const [keterangan, setKeterangan] = useState('');
   const [checks, setChecks] = useState({
@@ -22,15 +22,13 @@ export default function AddModal() {
   const reset = () => {
     setNama(''); setBusiness('F&B'); setKawasan('A'); setVisit('');
     setHasilVisit(''); setKeterangan('');
-    setChecks({ mandiri_rek: false, mandiri_edc: false, mandiri_qr: false, bank_lain_edc: false, bank_lain_qr: false });
+    setChecks({ mandiri_rek:false, mandiri_edc:false, mandiri_qr:false, bank_lain_edc:false, bank_lain_qr:false });
     setPendingPhotos([]);
   };
 
   const close = () => { setAddModalOpen(false); reset(); };
-
-  const toggleChk = (key: keyof typeof checks) => {
+  const toggleChk = (key: keyof typeof checks) =>
     setChecks(prev => ({ ...prev, [key]: !prev[key] }));
-  };
 
   const handlePhotos = (files: FileList | null) => {
     if (!files) return;
@@ -42,25 +40,26 @@ export default function AddModal() {
     if (fileRef.current) fileRef.current.value = '';
   };
 
-  const removePP = (i: number) => setPendingPhotos(prev => prev.filter((_, idx) => idx !== i));
-
-  const submit = () => {
+  const submit = async () => {
     if (!nama.trim()) { alert('⚠️ Nama merchant wajib!'); return; }
     const m: Omit<Merchant, 'id'> = {
       nama: nama.trim(), business, kawasan,
-      mandiri_rek: checks.mandiri_rek ? 'V' : '',
-      mandiri_edc: checks.mandiri_edc ? 'V' : '',
-      mandiri_qr:  checks.mandiri_qr  ? 'V' : '',
+      mandiri_rek:   checks.mandiri_rek   ? 'V' : '',
+      mandiri_edc:   checks.mandiri_edc   ? 'V' : '',
+      mandiri_qr:    checks.mandiri_qr    ? 'V' : '',
       bank_lain_edc: checks.bank_lain_edc ? 'V' : '',
       bank_lain_qr:  checks.bank_lain_qr  ? 'V' : '',
-      visit, hasil_visit: hasilVisit.trim(), keterangan: keterangan.trim(),
+      visit,
+      hasil_visit:   hasilVisit.trim(),
+      keterangan:    keterangan.trim(),
     };
-    addMerchant(m, [...pendingPhotos]);
+    await addMerchant(m, [...pendingPhotos]);
     close();
   };
 
   return (
-    <div className={`modal-overlay${addModalOpen ? ' open' : ''}`} onClick={e => { if (e.target === e.currentTarget) close(); }}>
+    <div className={`modal-overlay${addModalOpen ? ' open' : ''}`}
+      onClick={e => { if (e.target === e.currentTarget) close(); }}>
       <div className="modal-sheet">
         <button className="modal-close" onClick={close}>✕</button>
         <div className="modal-handle" />
@@ -105,19 +104,19 @@ export default function AddModal() {
           </div>
         </div>
         <div className="form-group">
-          <label>Status Visit</label>
+          <label>🚶 Status Visit</label>
           <select value={visit} onChange={e => setVisit(e.target.value)}>
-            <option value="">Belum</option>
-            <option value="SUDAH">Sudah</option>
+            <option value="">Belum Visit</option>
+            <option value="SUDAH">✅ Sudah Visit</option>
           </select>
         </div>
         <div className="form-group">
-          <label>Hasil Visit</label>
-          <input type="text" placeholder="FOLLOW UP / SUDAH / TIDAK BERMINAT..." value={hasilVisit} onChange={e => setHasilVisit(e.target.value)} />
+          <label>📋 Hasil Visit</label>
+          <input type="text" placeholder="FOLLOW UP / SUDAH / TIDAK BERMINAT…" value={hasilVisit} onChange={e => setHasilVisit(e.target.value)} />
         </div>
         <div className="form-group">
-          <label>Keterangan</label>
-          <textarea rows={2} placeholder="EDC BCA, ANCHOR, dsb..." value={keterangan} onChange={e => setKeterangan(e.target.value)} />
+          <label>📝 Keterangan</label>
+          <textarea rows={2} placeholder="EDC BCA, ANCHOR, dsb…" value={keterangan} onChange={e => setKeterangan(e.target.value)} />
         </div>
         <div className="form-group">
           <label>📸 Foto Merchant</label>
@@ -125,12 +124,12 @@ export default function AddModal() {
             <div className="pu-icon">📷</div>
             <p>Ambil Foto / Pilih dari Galeri</p>
           </div>
-          <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={e => handlePhotos(e.target.files)} />
+          <input ref={fileRef} type="file" accept="image/*" multiple style={{ display:'none' }} onChange={e => handlePhotos(e.target.files)} />
           <div className="photo-preview-row">
             {pendingPhotos.map((src, i) => (
               <div className="photo-preview-item" key={i}>
                 <img src={src} alt="" />
-                <button className="del-pp" onClick={() => removePP(i)}>✕</button>
+                <button className="del-pp" onClick={() => setPendingPhotos(p => p.filter((_,j) => j !== i))}>✕</button>
               </div>
             ))}
           </div>

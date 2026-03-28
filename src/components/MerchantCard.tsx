@@ -146,10 +146,6 @@ export default function MerchantCard({ merchant: m }: Props) {
             </div>
           </div>
 
-          {/* Edit hint */}
-          <div className="exp-readonly-hint" onClick={openEdit}>
-            ✏️ Tap Edit untuk mengubah data
-          </div>
 
           {/* Action buttons — Maps, Edit, Delete only */}
           <div className="card-btns">

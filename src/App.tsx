@@ -12,7 +12,6 @@ import EditModal from './components/modals/EditModal';
 
 function AppInner() {
   const { currentPage, setAddModalOpen } = useApp();
-
   return (
     <>
       <BottomNav />
@@ -22,9 +21,7 @@ function AppInner() {
         {currentPage === 'dashboard' && <DashboardPage />}
         {currentPage === 'list'      && <ListPage />}
       </div>
-      {/* Desktop FAB */}
       <button className="desktop-fab" onClick={() => setAddModalOpen(true)}>＋</button>
-
       <AddModal />
       <EditModal />
       <ConfirmDialog />
@@ -33,7 +30,4 @@ function AppInner() {
     </>
   );
 }
-
-export default function App() {
-  return <AppInner />;
-}
+export default function App() { return <AppInner />; }
