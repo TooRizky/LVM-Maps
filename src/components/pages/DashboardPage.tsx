@@ -1,6 +1,6 @@
 import { useApp } from '../../context/AppContext';
 import { kwStats, computeStats } from '../../lib/merchantUtils';
-import { KAW_HEX, KAWASAN_LIST } from '../../lib/constants';
+import { KAW_HEX, KAWASAN_LIST, KAWASAN_LABEL } from '../../lib/constants';
 
 export default function DashboardPage() {
   const { merchants, setCurrentPage, setFilters, setFilterPanelOpen } = useApp();
@@ -8,132 +8,84 @@ export default function DashboardPage() {
 
   const today = new Date().toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
 
+  // Count hasil visit types
+  const followUpCount     = merchants.filter(m => m.hasil_visit === 'Follow Up').length;
+  const closingCount      = merchants.filter(m => m.hasil_visit === 'Closing').length;
+  const tidakBerminatCount = merchants.filter(m => m.hasil_visit === 'Tidak Berminat').length;
+
   const goKawasan = (k: string) => {
     setFilters({ activeKawasan: k });
     setCurrentPage('list');
     setFilterPanelOpen(false);
   };
 
+  const visitPct = totalStats.total ? Math.round(totalStats.visited / totalStats.total * 100) : 0;
+
   return (
     <div className="page active" id="page-dashboard">
-      {/* Hero */}
-      <div className="dash-hero">
+      {/* Hero — greeting only */}
+      <div className="dash-hero" style={{ paddingBottom: 14 }}>
         <div className="hero-top">
           <div className="hero-greeting">
             <h2>Selamat Datang 👋</h2>
             <p>Dashboard Mapping Merchant</p>
           </div>
-          <div className="hero-badge" id="heroDate">{today}</div>
-        </div>
-        <div className="hero-stats">
-          <div className="hs">
-            <div className="hs-n" id="hero-total">{totalStats.total}</div>
-            <div className="hs-l">Total</div>
-          </div>
-          <div className="hs">
-            <div className="hs-n" id="hero-visit">{totalStats.visited}</div>
-            <div className="hs-l">Visit</div>
-          </div>
-          <div className="hs">
-            <div className="hs-n" id="hero-mandiri">{totalStats.mandiri}</div>
-            <div className="hs-l">Mandiri</div>
-          </div>
-          <div className="hs">
-            <div className="hs-n" id="hero-done">{totalStats.done}</div>
-            <div className="hs-l">Done</div>
-          </div>
+          <div className="hero-badge">{today}</div>
         </div>
       </div>
 
-      {/* Denah Kawasan */}
-      <div className="denah-section">
-        <div className="section-title-bar">
-          <div className="section-title">🗺️ Denah Kawasan</div>
-          <div className="section-hint">Tap kawasan untuk lihat merchant</div>
-        </div>
-        <div className="denah-scroll">
-          <div className="denah-canvas">
-            {/* Roads */}
-            <div className="road-h" style={{ top: '44%', height: '3%' }} />
-            <div className="road-h" style={{ top: '97%', height: '3%' }} />
-            <div className="road-v" style={{ left: '8%', width: '3%' }} />
-            <div className="road-v" style={{ left: '18%', width: '3%' }} />
-            <div className="road-v" style={{ left: '29%', width: '2%' }} />
-            <div className="road-v" style={{ left: '40%', width: '2%' }} />
-            <div className="road-v" style={{ left: '60%', width: '3%' }} />
+      {/* Progress Dashboard */}
+      <div className="kaw-section" style={{ marginTop: 12 }}>
+        <div className="kaw-section-title">📊 Progress Kunjungan</div>
 
-            {/* Boundaries — outline boxes per zone */}
-            <div className="boundary" style={{ left: '0%',  top: '0%',  width: '28%', bottom: '56%' }} />
-            <div className="boundary" style={{ left: '31%', top: '0%',  right: '37%', bottom: '56%' }} />
-            <div className="boundary" style={{ left: '63%', top: '0%',  right: '0%',  bottom: '43%' }} />
-            <div className="boundary" style={{ left: '0%',  top: '47%', right: '63%', bottom: '0%'  }} />
-
-            {/* ── KAWASAN A ──
-                Fixed: was right:40% (width=60%) → center at 30%, covered by B which starts at 29%.
-                Now: width:28% → center at 14% → label clearly visible in its own zone. */}
-            <div className="kw" style={{ left: '0%', top: '0%', width: '28%', height: '44%', background: 'var(--kA)' }} onClick={() => goKawasan('A')}>
-              <span className="ltr">A</span>
-              <span className="cnt">{kwStats(merchants, 'A').total}</span>
-            </div>
-
-            {/* ── KAWASAN B ── left:31% so road at 29-31% is visible between A & B */}
-            <div className="kw" style={{ left: '31%', top: '0%', right: '37%', height: '44%', background: 'var(--kB)' }} onClick={() => goKawasan('B')}>
-              <span className="ltr">B</span>
-              <span className="cnt">{kwStats(merchants, 'B').total}</span>
-            </div>
-
-            {/* ── KAWASAN C ── */}
-            <div className="kw" style={{ left: '63%', top: '0%', right: '0%', height: '43%', background: 'var(--kC)' }} onClick={() => goKawasan('C')}>
-              <span className="ltr">C</span>
-              <span className="cnt">{kwStats(merchants, 'C').total}</span>
-            </div>
-
-            {/* ── KAWASAN D ── horizontal strip in the middle-lower area */}
-            <div className="kw" style={{ left: '42%', top: '55%', right: '19%', height: '12%', background: 'var(--kD)' }} onClick={() => goKawasan('D')}>
-              <span className="ltr" style={{ fontSize: 'clamp(9px,2vw,14px)' }}>D</span>
-              <span className="cnt">{kwStats(merchants, 'D').total}</span>
-            </div>
-
-            {/* ── KAWASAN E ── narrow vertical strip far left */}
-            <div className="kw" style={{ left: '0%', top: '47%', width: '8%', height: '6%', background: 'var(--kE)' }} onClick={() => goKawasan('E')}>
-              <span className="ltr" style={{ fontSize: 'clamp(8px,1.8vw,12px)' }}>E</span>
-            </div>
-            <div className="kw vert" style={{ left: '0%', top: '54%', width: '8%', height: '44%', background: 'var(--kE)' }} onClick={() => goKawasan('E')}>
-              <span className="ltr">E</span>
-              <span className="cnt">{kwStats(merchants, 'E').total}</span>
-            </div>
-
-            {/* ── KAWASAN F ── narrow vertical strip, next to E with road gap */}
-            <div className="kw" style={{ left: '20%', top: '47%', width: '9%', height: '6%', background: 'var(--kF)' }} onClick={() => goKawasan('F')}>
-              <span className="ltr" style={{ fontSize: 'clamp(8px,1.8vw,12px)' }}>F</span>
-            </div>
-            <div className="kw vert" style={{ left: '20%', top: '54%', width: '9%', height: '44%', background: 'var(--kF)' }} onClick={() => goKawasan('F')}>
-              <span className="ltr">F</span>
-              <span className="cnt">{kwStats(merchants, 'F').total}</span>
-            </div>
-
-            {/* ── Office pins ── */}
-            <div className="office-pin" style={{ left: '50%', top: '1%', transform: 'translateX(-50%)' }}>
-              <div className="office-icon">🏦</div>
-              <div className="office-lbl">Cab Baru</div>
-            </div>
-            <div className="office-pin" style={{ left: '36%', top: '26%', transform: 'translateX(-50%)' }}>
-              <div className="office-icon">🏦</div>
-              <div className="office-lbl">Cab Lama</div>
-            </div>
-            <div className="taman-pin" style={{ left: '10%', top: '63%' }}>Taman<br />Ratu</div>
+        {/* Overall progress bar */}
+        <div style={{
+          background: '#fff',
+          borderRadius: 16,
+          padding: '16px 20px',
+          marginBottom: 12,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+          border: '1px solid #e2e8f0',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span style={{ fontWeight: 700, color: '#1e293b' }}>Total Progress Visit</span>
+            <span style={{ fontWeight: 700, color: '#2563eb' }}>{visitPct}%</span>
+          </div>
+          <div style={{ height: 10, background: '#e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${visitPct}%`, background: 'linear-gradient(90deg, #2563eb, #06b6d4)', borderRadius: 8, transition: 'width 0.5s' }} />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 12, color: '#64748b' }}>
+            <span>{totalStats.visited} sudah visit</span>
+            <span>{totalStats.total - totalStats.visited} belum visit</span>
           </div>
         </div>
 
-        {/* Legend */}
-        <div className="legend-row">
-          {KAWASAN_LIST.map(k => (
-            <div className="leg" key={k}>
-              <div className="leg-dot" style={{ background: KAW_HEX[k] }} />
-              Kaw {k}
+        {/* Summary stats cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 12 }}>
+          {[
+            { label: 'Total Merchant', value: totalStats.total,       color: '#2563eb', bg: '#eff6ff', icon: '🏪' },
+            { label: 'Sudah Visit',    value: totalStats.visited,      color: '#0891b2', bg: '#f0f9ff', icon: '✅' },
+            { label: 'Follow Up',      value: followUpCount,           color: '#d97706', bg: '#fffbeb', icon: '🔄' },
+            { label: 'Tidak Berminat', value: tidakBerminatCount,      color: '#dc2626', bg: '#fef2f2', icon: '❌' },
+            { label: 'Closing',        value: closingCount,            color: '#16a34a', bg: '#f0fdf4', icon: '🎯' },
+            { label: 'Ada Mandiri',    value: totalStats.mandiri,      color: '#7c3aed', bg: '#f5f3ff', icon: '🏦' },
+          ].map(stat => (
+            <div key={stat.label} style={{
+              background: stat.bg,
+              borderRadius: 14,
+              padding: '14px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              border: `1px solid ${stat.color}20`,
+            }}>
+              <span style={{ fontSize: 24 }}>{stat.icon}</span>
+              <div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: stat.color, lineHeight: 1.1 }}>{stat.value}</div>
+                <div style={{ fontSize: 12, color: '#64748b', marginTop: 1 }}>{stat.label}</div>
+              </div>
             </div>
           ))}
-          <div className="leg"><span style={{ fontSize: 12 }}>🏦</span> Kantor Cab.</div>
         </div>
       </div>
 
@@ -157,6 +109,7 @@ export default function DashboardPage() {
                   <div className="kaw-badge" style={{ background: clr }}>{k}</div>
                   <div className="kaw-info">
                     <h4>Kawasan {k}</h4>
+                    <p style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>{KAWASAN_LABEL[k]}</p>
                     <p>{s.total} merchant</p>
                   </div>
                 </div>

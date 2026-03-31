@@ -1,6 +1,9 @@
 import { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
-import { BUSINESS_TYPES, KAWASAN_LIST } from '../../lib/constants';
+import {
+  BUSINESS_TYPES, KAWASAN_LIST, KAWASAN_LABEL,
+  HASIL_VISIT_OPTIONS, PIC_CABANG_LIST, BANK_LIST,
+} from '../../lib/constants';
 import type { Merchant } from '../../types';
 
 export default function AddModal() {
@@ -11,24 +14,31 @@ export default function AddModal() {
   const [kawasan,    setKawasan]    = useState<string>('A');
   const [visit,      setVisit]      = useState('');
   const [hasilVisit, setHasilVisit] = useState('');
+  const [picCabang,  setPicCabang]  = useState('');
   const [keterangan, setKeterangan] = useState('');
   const [checks, setChecks] = useState({
     mandiri_rek: false, mandiri_edc: false, mandiri_qr: false,
-    bank_lain_edc: false, bank_lain_qr: false,
   });
+  const [bankLainEdc, setBankLainEdc] = useState<string[]>([]);
+  const [bankLainQr,  setBankLainQr]  = useState<string[]>([]);
   const [pendingPhotos, setPendingPhotos] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
     setNama(''); setBusiness('F&B'); setKawasan('A'); setVisit('');
-    setHasilVisit(''); setKeterangan('');
-    setChecks({ mandiri_rek:false, mandiri_edc:false, mandiri_qr:false, bank_lain_edc:false, bank_lain_qr:false });
+    setHasilVisit(''); setPicCabang(''); setKeterangan('');
+    setChecks({ mandiri_rek:false, mandiri_edc:false, mandiri_qr:false });
+    setBankLainEdc([]); setBankLainQr([]);
     setPendingPhotos([]);
   };
 
   const close = () => { setAddModalOpen(false); reset(); };
   const toggleChk = (key: keyof typeof checks) =>
     setChecks(prev => ({ ...prev, [key]: !prev[key] }));
+
+  const toggleBank = (arr: string[], setArr: (v: string[]) => void, bank: string) => {
+    setArr(arr.includes(bank) ? arr.filter(b => b !== bank) : [...arr, bank]);
+  };
 
   const handlePhotos = (files: FileList | null) => {
     if (!files) return;
@@ -44,14 +54,16 @@ export default function AddModal() {
     if (!nama.trim()) { alert('⚠️ Nama merchant wajib!'); return; }
     const m: Omit<Merchant, 'id'> = {
       nama: nama.trim(), business, kawasan,
-      mandiri_rek:   checks.mandiri_rek   ? 'V' : '',
-      mandiri_edc:   checks.mandiri_edc   ? 'V' : '',
-      mandiri_qr:    checks.mandiri_qr    ? 'V' : '',
-      bank_lain_edc: checks.bank_lain_edc ? 'V' : '',
-      bank_lain_qr:  checks.bank_lain_qr  ? 'V' : '',
+      mandiri_rek:   checks.mandiri_rek ? 'V' : '',
+      mandiri_edc:   checks.mandiri_edc ? 'V' : '',
+      mandiri_qr:    checks.mandiri_qr  ? 'V' : '',
+      bank_lain_edc: bankLainEdc.join(','),
+      bank_lain_qr:  bankLainQr.join(','),
       visit,
-      hasil_visit:   hasilVisit.trim(),
+      hasil_visit:   hasilVisit,
+      pic_cabang:    picCabang,
       keterangan:    keterangan.trim(),
+      visit_history: '[]',
     };
     await addMerchant(m, [...pendingPhotos]);
     close();
@@ -78,9 +90,12 @@ export default function AddModal() {
         <div className="form-group">
           <label>Kawasan</label>
           <select value={kawasan} onChange={e => setKawasan(e.target.value)}>
-            {KAWASAN_LIST.map(k => <option key={k}>{k}</option>)}
+            {KAWASAN_LIST.map(k => (
+              <option key={k} value={k}>{k} — {KAWASAN_LABEL[k]}</option>
+            ))}
           </select>
         </div>
+
         <div className="form-group">
           <label>🏦 Produk Mandiri</label>
           <div className="form-check-grid">
@@ -92,17 +107,41 @@ export default function AddModal() {
             ))}
           </div>
         </div>
+
         <div className="form-group">
-          <label>🏧 Bank Lain</label>
-          <div className="form-check-grid">
-            {(['bank_lain_edc','bank_lain_qr'] as const).map(key => (
-              <label key={key} className={`form-check${checks[key] ? ' checked' : ''}`} onClick={() => toggleChk(key)}>
-                <span className="chk-box">{checks[key] ? '✓' : ''}</span>
-                {key === 'bank_lain_edc' ? 'EDC' : 'QR'}
+          <label>🏧 Bank Lain — EDC</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+            {BANK_LIST.map(bank => (
+              <label
+                key={bank}
+                className={`form-check${bankLainEdc.includes(bank) ? ' checked' : ''}`}
+                onClick={() => toggleBank(bankLainEdc, setBankLainEdc, bank)}
+                style={{ fontSize: 12, padding: '4px 10px' }}
+              >
+                <span className="chk-box">{bankLainEdc.includes(bank) ? '✓' : ''}</span>
+                {bank}
               </label>
             ))}
           </div>
         </div>
+
+        <div className="form-group">
+          <label>📱 Bank Lain — QR / QRIS</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+            {BANK_LIST.map(bank => (
+              <label
+                key={bank}
+                className={`form-check${bankLainQr.includes(bank) ? ' checked' : ''}`}
+                onClick={() => toggleBank(bankLainQr, setBankLainQr, bank)}
+                style={{ fontSize: 12, padding: '4px 10px' }}
+              >
+                <span className="chk-box">{bankLainQr.includes(bank) ? '✓' : ''}</span>
+                {bank}
+              </label>
+            ))}
+          </div>
+        </div>
+
         <div className="form-group">
           <label>🚶 Status Visit</label>
           <select value={visit} onChange={e => setVisit(e.target.value)}>
@@ -110,14 +149,29 @@ export default function AddModal() {
             <option value="SUDAH">✅ Sudah Visit</option>
           </select>
         </div>
+
         <div className="form-group">
           <label>📋 Hasil Visit</label>
-          <input type="text" placeholder="FOLLOW UP / SUDAH / TIDAK BERMINAT…" value={hasilVisit} onChange={e => setHasilVisit(e.target.value)} />
+          <select value={hasilVisit} onChange={e => setHasilVisit(e.target.value)}>
+            {HASIL_VISIT_OPTIONS.map(o => (
+              <option key={o} value={o}>{o || '— Pilih Hasil Visit —'}</option>
+            ))}
+          </select>
         </div>
+
+        <div className="form-group">
+          <label>👤 PIC Cabang</label>
+          <select value={picCabang} onChange={e => setPicCabang(e.target.value)}>
+            <option value="">— Pilih PIC —</option>
+            {PIC_CABANG_LIST.map(p => <option key={p}>{p}</option>)}
+          </select>
+        </div>
+
         <div className="form-group">
           <label>📝 Keterangan</label>
           <textarea rows={2} placeholder="EDC BCA, ANCHOR, dsb…" value={keterangan} onChange={e => setKeterangan(e.target.value)} />
         </div>
+
         <div className="form-group">
           <label>📸 Foto Merchant</label>
           <div className="photo-upload-area" onClick={() => fileRef.current?.click()}>
@@ -134,6 +188,7 @@ export default function AddModal() {
             ))}
           </div>
         </div>
+
         <button className="btn-submit" onClick={submit}>💾 Simpan Merchant</button>
       </div>
     </div>

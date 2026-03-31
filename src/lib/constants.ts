@@ -19,6 +19,16 @@ export const KAW_HEX: Record<string, string> = {
   D: '#16A34A', E: '#0891B2', F: '#DB2777',
 };
 
+// Nama kawasan berdasarkan alamat jalan
+export const KAWASAN_LABEL: Record<string, string> = {
+  A: 'Jl. Tanjung Mangga Raya',
+  B: 'Jl. Tanjung Duren 1',
+  C: 'Jl. Tanjung Duren Barat',
+  D: 'Jl. Ratu Kemuning',
+  E: 'Jl. Taman Ratu (E)',
+  F: 'Jl. Taman Ratu (F)',
+};
+
 export const BIZ_EMOJI: Record<string, string> = {
   'F&B':       '🍜', PERDAGANGAN: '🛍️', JASA:       '🔧',
   HEALTHCARE:  '🏥', EDUCATION:   '📚', COMPANY:    '🏢',
@@ -39,3 +49,20 @@ export const BUSINESS_TYPES = [
   'F&B', 'PERDAGANGAN', 'JASA', 'HEALTHCARE',
   'EDUCATION', 'COMPANY', 'SUPERMARKET', 'IBADAH', 'OTHER',
 ] as const;
+
+// Hasil kunjungan (dropdown)
+export const HASIL_VISIT_OPTIONS = ['', 'Follow Up', 'Closing', 'Tidak Berminat'] as const;
+
+// PIC Cabang
+export const PIC_CABANG_LIST = [
+  'Gahri', 'Vuai', 'Denis', 'Luciano', 'Farhan',
+  'Nailah', 'Sasdindah', 'Tiara', 'Mutiara',
+] as const;
+
+// Bank list untuk bank lain
+export const BANK_LIST = [
+  'BCA', 'BNI', 'BRI', 'CIMB', 'Danamon',
+  'Permata', 'BTN', 'BSI', 'Muamalat', 'Ocbc',
+  'Panin', 'Mega', 'Bukopin', 'Maybank', 'Lainnya',
+] as const;
+

@@ -48,11 +48,13 @@ export interface MerchantRow {
   mandiri_rek: string;
   mandiri_edc: string;
   mandiri_qr: string;
-  bank_lain_edc: string;
-  bank_lain_qr: string;
+  bank_lain_edc: string;  // comma-separated: "BCA,BNI"
+  bank_lain_qr: string;   // comma-separated: "BRI,CIMB"
   visit: string;
   hasil_visit: string;
+  pic_cabang: string;
   keterangan: string;
+  visit_history: string;  // JSON array
   photos: string;        // pipe-separated public URLs
   updated_at: string;
 }

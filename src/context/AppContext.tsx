@@ -78,7 +78,9 @@ function toRow(m: Merchant, photos: Photos): MerchantRow {
     bank_lain_qr:  m.bank_lain_qr  || '',
     visit:         m.visit         || '',
     hasil_visit:   m.hasil_visit   || '',
+    pic_cabang:    m.pic_cabang    || '',
     keterangan:    m.keterangan    || '',
+    visit_history: m.visit_history || '[]',
     photos:        (photos[m.id]   || []).filter(u => u?.startsWith('http')).join('|'),
     updated_at:    new Date().toISOString(),
   };
@@ -102,7 +104,9 @@ function fromRows(rows: MerchantRow[]): { merchants: Merchant[]; photos: Photos 
       bank_lain_qr:  row.bank_lain_qr,
       visit:         row.visit,
       hasil_visit:   row.hasil_visit,
+      pic_cabang:    row.pic_cabang   || '',
       keterangan:    row.keterangan,
+      visit_history: row.visit_history || '[]',
     } as Merchant;
   });
   return { merchants, photos };

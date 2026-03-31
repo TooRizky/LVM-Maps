@@ -6,10 +6,19 @@ export interface Merchant {
   mandiri_rek: string;
   mandiri_edc: string;
   mandiri_qr: string;
-  bank_lain_edc: string;
-  bank_lain_qr: string;
+  bank_lain_edc: string;   // comma-separated bank names, e.g. "BCA,BNI"
+  bank_lain_qr: string;    // comma-separated bank names, e.g. "BRI,CIMB"
   visit: string;
-  hasil_visit: string;
+  hasil_visit: string;     // 'Follow Up' | 'Closing' | 'Tidak Berminat' | ''
+  pic_cabang: string;      // PIC yang melakukan visit
+  keterangan: string;
+  visit_history: string;   // JSON array of VisitRecord
+}
+
+export interface VisitRecord {
+  date: string;      // ISO date string
+  pic: string;
+  hasil: string;
   keterangan: string;
 }
 

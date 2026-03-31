@@ -120,8 +120,9 @@ export default function FilterPanel() {
         >
           <option value="">Semua Hasil</option>
           <option value="SUDAH">Done / Sudah</option>
-          <option value="FOLLOW UP">Follow Up</option>
-          <option value="TIDAK BERMINAT">Tidak Berminat</option>
+          <option value="Follow Up">Follow Up</option>
+          <option value="Tidak Berminat">Tidak Berminat</option>
+          <option value="Closing">Closing</option>
           <option value="BELUM BERMINAT">Belum Berminat</option>
         </select>
         <select
