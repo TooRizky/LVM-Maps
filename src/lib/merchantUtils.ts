@@ -24,18 +24,28 @@ export function kwStats(merchants: Merchant[], k: string) {
       return h === 'Closing' || h.toUpperCase().includes('SUDAH') || h === 'DONE AKUSISI';
     }).length,
     mandiri: m.filter(x => x.mandiri_rek || x.mandiri_edc || x.mandiri_qr).length,
+    closing: m.filter(x => x.hasil_visit === 'Closing').length,
   };
 }
 
 export function computeStats(merchants: Merchant[]) {
+  const closing = merchants.filter(m => m.hasil_visit === 'Closing');
+  const mandiri = merchants.filter(m => m.mandiri_rek || m.mandiri_edc || m.mandiri_qr);
+  // Closing yang juga sudah ada produk Mandiri (intersection)
+  const closingWithMandiri = closing.filter(m => m.mandiri_rek || m.mandiri_edc || m.mandiri_qr).length;
+
   return {
-    total:   merchants.length,
-    visited: merchants.filter(m => (m.visit || '').toUpperCase() === 'SUDAH').length,
-    mandiri: merchants.filter(m => m.mandiri_rek || m.mandiri_edc || m.mandiri_qr).length,
-    done:    merchants.filter(m => {
+    total:              merchants.length,
+    visited:            merchants.filter(m => (m.visit || '').toUpperCase() === 'SUDAH').length,
+    mandiri:            mandiri.length,
+    mandiriFromClosing: closingWithMandiri,
+    done:               merchants.filter(m => {
       const h = m.hasil_visit || '';
       return h === 'Closing' || h.toUpperCase().includes('SUDAH') || h === 'DONE AKUSISI';
     }).length,
+    closing:            closing.length,
+    followUp:           merchants.filter(m => m.hasil_visit === 'Follow Up').length,
+    tidakBerminat:      merchants.filter(m => m.hasil_visit === 'Tidak Berminat').length,
   };
 }
 
@@ -68,6 +78,7 @@ export function getFiltered(merchants: Merchant[], filters: Filters): Merchant[]
     }
 
     // Mandiri select
+    if (filters.filterMandiri === 'any'     && !(m.mandiri_rek || m.mandiri_edc || m.mandiri_qr)) return false;
     if (filters.filterMandiri === 'rekening' && !m.mandiri_rek) return false;
     if (filters.filterMandiri === 'edc'      && !m.mandiri_edc) return false;
     if (filters.filterMandiri === 'qr'       && !m.mandiri_qr)  return false;

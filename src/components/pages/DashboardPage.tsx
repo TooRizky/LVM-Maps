@@ -8,10 +8,17 @@ export default function DashboardPage() {
 
   const today = new Date().toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
 
-  // Count hasil visit types
-  const followUpCount     = merchants.filter(m => m.hasil_visit === 'Follow Up').length;
-  const closingCount      = merchants.filter(m => m.hasil_visit === 'Closing').length;
-  const tidakBerminatCount = merchants.filter(m => m.hasil_visit === 'Tidak Berminat').length;
+  // Navigate to list with specific filter
+  const goFilter = (filterOverride: Parameters<typeof setFilters>[0]) => {
+    setFilters({
+      searchQ: '', filterBiz: '', filterVisit: '',
+      filterHasil: '', filterMandiri: '', filterNama: '',
+      activeKawasan: 'ALL',
+      ...filterOverride,
+    });
+    setFilterPanelOpen(false);
+    setCurrentPage('list');
+  };
 
   const goKawasan = (k: string) => {
     setFilters({ activeKawasan: k });
@@ -21,9 +28,58 @@ export default function DashboardPage() {
 
   const visitPct = totalStats.total ? Math.round(totalStats.visited / totalStats.total * 100) : 0;
 
+  // Config setiap stat card
+  const statCards = [
+    {
+      label: 'Total Merchant',
+      value: totalStats.total,
+      color: '#2563eb', bg: '#eff6ff', icon: '🏪',
+      filter: {} as Parameters<typeof setFilters>[0],
+      subNote: null as string | null,
+    },
+    {
+      label: 'Sudah Visit',
+      value: totalStats.visited,
+      color: '#0891b2', bg: '#f0f9ff', icon: '✅',
+      filter: { filterVisit: 'SUDAH' } as Parameters<typeof setFilters>[0],
+      subNote: null,
+    },
+    {
+      label: 'Follow Up',
+      value: totalStats.followUp,
+      color: '#d97706', bg: '#fffbeb', icon: '🔄',
+      filter: { filterHasil: 'Follow Up' } as Parameters<typeof setFilters>[0],
+      subNote: null,
+    },
+    {
+      label: 'Tidak Berminat',
+      value: totalStats.tidakBerminat,
+      color: '#dc2626', bg: '#fef2f2', icon: '❌',
+      filter: { filterHasil: 'Tidak Berminat' } as Parameters<typeof setFilters>[0],
+      subNote: null,
+    },
+    {
+      label: 'Closing',
+      value: totalStats.closing,
+      color: '#16a34a', bg: '#f0fdf4', icon: '🎯',
+      filter: { filterHasil: 'Closing' } as Parameters<typeof setFilters>[0],
+      subNote: null,
+    },
+    {
+      label: 'Ada Mandiri',
+      value: totalStats.mandiri,
+      color: '#7c3aed', bg: '#f5f3ff', icon: '🏦',
+      filter: { filterMandiri: 'any' } as Parameters<typeof setFilters>[0],
+      // Opsi B: sub-note berapa closing yang sudah ada produk Mandiri
+      subNote: totalStats.mandiriFromClosing > 0
+        ? `🎯 ${totalStats.mandiriFromClosing} dari Closing`
+        : null,
+    },
+  ];
+
   return (
     <div className="page active" id="page-dashboard">
-      {/* Hero — greeting only */}
+      {/* Hero */}
       <div className="dash-hero" style={{ paddingBottom: 14 }}>
         <div className="hero-top">
           <div className="hero-greeting">
@@ -60,30 +116,54 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Summary stats cards */}
+        {/* Stat cards — semua clickable */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 12 }}>
-          {[
-            { label: 'Total Merchant', value: totalStats.total,       color: '#2563eb', bg: '#eff6ff', icon: '🏪' },
-            { label: 'Sudah Visit',    value: totalStats.visited,      color: '#0891b2', bg: '#f0f9ff', icon: '✅' },
-            { label: 'Follow Up',      value: followUpCount,           color: '#d97706', bg: '#fffbeb', icon: '🔄' },
-            { label: 'Tidak Berminat', value: tidakBerminatCount,      color: '#dc2626', bg: '#fef2f2', icon: '❌' },
-            { label: 'Closing',        value: closingCount,            color: '#16a34a', bg: '#f0fdf4', icon: '🎯' },
-            { label: 'Ada Mandiri',    value: totalStats.mandiri,      color: '#7c3aed', bg: '#f5f3ff', icon: '🏦' },
-          ].map(stat => (
-            <div key={stat.label} style={{
-              background: stat.bg,
-              borderRadius: 14,
-              padding: '14px 16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              border: `1px solid ${stat.color}20`,
-            }}>
+          {statCards.map(stat => (
+            <div
+              key={stat.label}
+              onClick={() => goFilter(stat.filter)}
+              style={{
+                background: stat.bg,
+                borderRadius: 14,
+                padding: '14px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                border: `1px solid ${stat.color}20`,
+                cursor: 'pointer',
+                transition: 'transform 0.15s, box-shadow 0.15s',
+                userSelect: 'none',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLDivElement).style.transform = 'scale(1.02)';
+                (e.currentTarget as HTMLDivElement).style.boxShadow = `0 4px 16px ${stat.color}30`;
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLDivElement).style.transform = 'scale(1)';
+                (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
+              }}
+            >
               <span style={{ fontSize: 24 }}>{stat.icon}</span>
-              <div>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 22, fontWeight: 800, color: stat.color, lineHeight: 1.1 }}>{stat.value}</div>
                 <div style={{ fontSize: 12, color: '#64748b', marginTop: 1 }}>{stat.label}</div>
+                {stat.subNote && (
+                  <div style={{
+                    fontSize: 11,
+                    color: '#16a34a',
+                    fontWeight: 600,
+                    marginTop: 4,
+                    background: '#dcfce7',
+                    borderRadius: 6,
+                    padding: '2px 7px',
+                    display: 'inline-block',
+                  }}>
+                    {stat.subNote}
+                  </div>
+                )}
               </div>
+              <span style={{ fontSize: 14, color: `${stat.color}99`, flexShrink: 0 }}>›</span>
             </div>
           ))}
         </div>

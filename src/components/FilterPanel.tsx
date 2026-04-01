@@ -131,6 +131,7 @@ export default function FilterPanel() {
           onChange={e => setFilters({ filterMandiri: e.target.value })}
         >
           <option value="">Semua Mandiri</option>
+          <option value="any">Ada Mandiri (semua produk)</option>
           <option value="rekening">Ada Rekening</option>
           <option value="edc">Ada EDC</option>
           <option value="qr">Ada QR</option>

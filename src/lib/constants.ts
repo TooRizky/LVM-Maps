@@ -55,8 +55,9 @@ export const HASIL_VISIT_OPTIONS = ['', 'Follow Up', 'Closing', 'Tidak Berminat'
 
 // PIC Cabang
 export const PIC_CABANG_LIST = [
-  'Gahri', 'Vuai', 'Denis', 'Luciano', 'Farhan',
-  'Nailah', 'Sasdindah', 'Tiara', 'Mutiara',
+  'Agus', 'Budi', 'Citra', 'Dewi', 'Eko',
+  'Fajar', 'Gita', 'Hendra', 'Indah', 'Joko',
+  'Kiki', 'Lina', 'Mira', 'Nani', 'Omar',
 ] as const;
 
 // Bank list untuk bank lain
