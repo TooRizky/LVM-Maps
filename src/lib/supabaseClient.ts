@@ -203,6 +203,30 @@ export async function dbDeletePhoto(publicUrl: string): Promise<void> {
   }
 }
 
+// ════════════════════════════════════════════════════
+//  APP SETTINGS — key/value store
+//  Tabel: app_settings (key text PK, value text)
+// ════════════════════════════════════════════════════
+
+/** Ambil nilai setting berdasarkan key. Mengembalikan null jika tidak ada. */
+export async function dbGetSetting(key: string): Promise<string | null> {
+  const res = await sbFetch(
+    `/rest/v1/app_settings?key=eq.${encodeURIComponent(key)}&select=value&limit=1`,
+    { headers: baseHeaders() }
+  );
+  const rows = await res.json() as { value: string }[];
+  return rows.length > 0 ? rows[0].value : null;
+}
+
+/** Simpan setting (upsert berdasarkan key). */
+export async function dbSetSetting(key: string, value: string): Promise<void> {
+  await sbFetch('/rest/v1/app_settings', {
+    method: 'POST',
+    headers: baseHeaders({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
+    body: JSON.stringify({ key, value }),
+  });
+}
+
 /** Test koneksi ke Supabase (cek bucket) */
 export async function dbTestConnection(
   onStatus: (msg: string, type?: '' | 'loading' | 'error' | 'success') => void

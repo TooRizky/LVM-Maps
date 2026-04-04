@@ -8,6 +8,7 @@ import { getFiltered } from '../lib/merchantUtils';
 import {
   dbFetchAll, dbUpsert, dbUpsertBatch, dbDelete,
   dbUploadPhoto, dbTestConnection, isConfigured,
+  dbGetSetting, dbSetSetting,
   type MerchantRow,
 } from '../lib/supabaseClient';
 import { exportToExcel } from '../lib/exportExcel';
@@ -217,10 +218,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       setSyncDot('syncing');
       try {
-        const rows = await dbFetchAll();
+        // Fetch merchants + PIC list secara paralel
+        const [rows, picRaw] = await Promise.all([
+          dbFetchAll(),
+          dbGetSetting('pic_list').catch(() => null),
+        ]);
+
         const { merchants: m, photos: p } = fromRows(rows);
         setMerchants(m);
         setPhotos(p);
+
+        if (picRaw) {
+          try {
+            const picArr = JSON.parse(picRaw);
+            if (Array.isArray(picArr) && picArr.length > 0) {
+              setPicListRaw(picArr);
+              savePicList(picArr);
+            }
+          } catch { /* ignore parse error, pakai data lokal */ }
+        }
+
         setSyncDot('online');
         showSyncBar(`✅ ${m.length} merchant dimuat dari Supabase`);
       } catch (e) {
@@ -451,21 +468,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [merchants]);
 
   // ── PIC List Management ───────────────────────────────
+  const syncPicToDb = useCallback((list: string[]) => {
+    if (!isConfigured()) return;
+    dbSetSetting('pic_list', JSON.stringify(list)).catch(() => {/* silent */});
+  }, []);
+
   const addPic = useCallback((name: string) => {
     setPicListRaw(prev => {
       const updated = [...prev, name];
       savePicList(updated);
+      syncPicToDb(updated);
       return updated;
     });
-  }, []);
+  }, [syncPicToDb]);
 
   const removePic = useCallback((name: string) => {
     setPicListRaw(prev => {
       const updated = prev.filter(p => p !== name);
       savePicList(updated);
+      syncPicToDb(updated);
       return updated;
     });
-  }, []);
+  }, [syncPicToDb]);
 
   const value: AppContextValue = {
     merchants, photos, filters, currentPage, expandedId,
