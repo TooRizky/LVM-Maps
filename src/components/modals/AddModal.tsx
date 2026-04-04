@@ -2,12 +2,12 @@ import { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   BUSINESS_TYPES, KAWASAN_LIST, KAWASAN_LABEL,
-  HASIL_VISIT_OPTIONS, PIC_CABANG_LIST, BANK_LIST,
+  HASIL_VISIT_OPTIONS, BANK_LIST,
 } from '../../lib/constants';
 import type { Merchant } from '../../types';
 
 export default function AddModal() {
-  const { addModalOpen, setAddModalOpen, addMerchant } = useApp();
+  const { addModalOpen, setAddModalOpen, addMerchant, picList } = useApp();
 
   const [nama,       setNama]       = useState('');
   const [business,   setBusiness]   = useState<string>('F&B');
@@ -163,7 +163,7 @@ export default function AddModal() {
           <label>👤 PIC Cabang</label>
           <select value={picCabang} onChange={e => setPicCabang(e.target.value)}>
             <option value="">— Pilih PIC —</option>
-            {PIC_CABANG_LIST.map(p => <option key={p}>{p}</option>)}
+            {picList.map(p => <option key={p}>{p}</option>)}
           </select>
         </div>
 

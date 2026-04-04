@@ -9,6 +9,8 @@ import DashboardPage from './components/pages/DashboardPage';
 import ListPage from './components/pages/ListPage';
 import AddModal from './components/modals/AddModal';
 import EditModal from './components/modals/EditModal';
+import ImportModal from './components/modals/ImportModal';
+import PicModal from './components/modals/PicModal';
 
 function AppInner() {
   const { currentPage, setAddModalOpen } = useApp();
@@ -24,6 +26,8 @@ function AppInner() {
       <button className="desktop-fab" onClick={() => setAddModalOpen(true)}>＋</button>
       <AddModal />
       <EditModal />
+      <ImportModal />
+      <PicModal />
       <ConfirmDialog />
       <Lightbox />
       <Toast />

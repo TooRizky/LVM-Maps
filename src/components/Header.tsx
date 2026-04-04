@@ -6,6 +6,7 @@ export default function Header() {
     syncDot, syncing, syncNow,
     setFilterPanelOpen, filterPanelOpen,
     doExportExcel, exporting,
+    setImportModalOpen, setPicModalOpen,
   } = useApp();
 
   const showSearch = currentPage === 'list';
@@ -35,6 +36,20 @@ export default function Header() {
 
         <div className="hdr-actions">
           <div className="hdr-pill">{merchants.length}</div>
+          <button
+            className="btn-sync"
+            title="Kelola daftar PIC"
+            onClick={() => setPicModalOpen(true)}
+          >
+            👥 PIC
+          </button>
+          <button
+            className="btn-sync"
+            title="Import data dari Excel"
+            onClick={() => setImportModalOpen(true)}
+          >
+            📂 Import
+          </button>
           <button
             className={`btn-sync${exporting ? ' exporting' : ''}`}
             title="Export Excel (urut Kawasan A-F, Nama A-Z)"

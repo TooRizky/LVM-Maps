@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   BUSINESS_TYPES, KAWASAN_LIST, KAWASAN_LABEL,
-  HASIL_VISIT_OPTIONS, PIC_CABANG_LIST, BANK_LIST,
+  HASIL_VISIT_OPTIONS, BANK_LIST,
 } from '../../lib/constants';
 import type { VisitRecord } from '../../types';
 
@@ -11,6 +11,7 @@ export default function EditModal() {
     editModalOpen, setEditModalOpen, editingId, setEditingId,
     merchants, updateMerchant,
     getPhotos, addPhoto, deletePhoto, openLightbox,
+    picList,
   } = useApp();
 
   const m    = merchants.find(x => Number(x.id) === Number(editingId)) || null;
@@ -216,7 +217,7 @@ export default function EditModal() {
           <label>👤 PIC Cabang</label>
           <select value={picCabang} onChange={e => setPicCabang(e.target.value)}>
             <option value="">— Pilih PIC —</option>
-            {PIC_CABANG_LIST.map(p => <option key={p}>{p}</option>)}
+            {picList.map(p => <option key={p}>{p}</option>)}
           </select>
         </div>
 

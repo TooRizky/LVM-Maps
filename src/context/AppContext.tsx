@@ -11,6 +11,24 @@ import {
   type MerchantRow,
 } from '../lib/supabaseClient';
 import { exportToExcel } from '../lib/exportExcel';
+import { PIC_CABANG_LIST } from '../lib/constants';
+import type { ImportRow } from '../lib/importExcel';
+
+// ── PIC list persistence ──────────────────────────────
+const PIC_KEY = 'lvm_pic_list';
+function loadPicList(): string[] {
+  try {
+    const raw = localStorage.getItem(PIC_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr) && arr.length > 0) return arr;
+    }
+  } catch { /* ignore */ }
+  return [...PIC_CABANG_LIST];
+}
+function savePicList(list: string[]) {
+  localStorage.setItem(PIC_KEY, JSON.stringify(list));
+}
 
 // ── Sync bar state ────────────────────────────────────
 interface SyncBarState { message: string; type: '' | 'loading' | 'error' | 'success'; show: boolean; }
@@ -52,6 +70,16 @@ interface AppContextValue {
   deleteMerchant: (id: number) => Promise<void>;
   addPhoto: (merchantId: number, base64: string) => Promise<void>;
   deletePhoto: (merchantId: number, idx: number) => Promise<void>;
+
+  importMerchants: (rows: ImportRow[]) => Promise<{ added: number; skipped: number }>;
+  importModalOpen: boolean;
+  setImportModalOpen: (v: boolean) => void;
+
+  picList: string[];
+  addPic: (name: string) => void;
+  removePic: (name: string) => void;
+  picModalOpen: boolean;
+  setPicModalOpen: (v: boolean) => void;
 
   syncNow: () => Promise<void>;
   pushAllToSupabase: () => Promise<void>;
@@ -139,6 +167,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [confirmModal, setConfirmModal] = useState<{open:boolean;id:number|null;nama:string}>({
     open:false, id:null, nama:'',
   });
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [picModalOpen,    setPicModalOpen]    = useState(false);
+  const [picList,         setPicListRaw]      = useState<string[]>(() => loadPicList());
 
   const syncingRef     = useRef(false);
   const toastTimer     = useRef<ReturnType<typeof setTimeout>|null>(null);
@@ -390,17 +421,66 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [merchants, photos, exporting]);
 
+  // ── Import Merchants ──────────────────────────────────
+  const importMerchants = useCallback(async (
+    rows: ImportRow[]
+  ): Promise<{ added: number; skipped: number }> => {
+    if (rows.length === 0) return { added: 0, skipped: 0 };
+
+    let currentId = nextId.current;
+    const newMerchants: Merchant[] = rows.map(r => ({ ...r, id: currentId++ }));
+    nextId.current = currentId;
+
+    const updatedMerchants = [...newMerchants, ...merchants];
+    setMerchants(updatedMerchants);
+    showToast(`✅ ${rows.length} merchant berhasil diimport!`);
+
+    try {
+      setSyncDot('syncing');
+      showSyncBar(`🔄 Mengupload ${rows.length} merchant ke Supabase…`, 'loading');
+      await dbUpsertBatch(newMerchants.map(m => toRow(m, {})));
+      setSyncDot('online');
+      showSyncBar(`✅ ${rows.length} merchant berhasil diimport ke Supabase!`);
+    } catch (e) {
+      setSyncDot('offline');
+      showSyncBar('❌ Gagal import ke Supabase: ' + (e as Error).message, 'error');
+    }
+
+    return { added: rows.length, skipped: 0 };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [merchants]);
+
+  // ── PIC List Management ───────────────────────────────
+  const addPic = useCallback((name: string) => {
+    setPicListRaw(prev => {
+      const updated = [...prev, name];
+      savePicList(updated);
+      return updated;
+    });
+  }, []);
+
+  const removePic = useCallback((name: string) => {
+    setPicListRaw(prev => {
+      const updated = prev.filter(p => p !== name);
+      savePicList(updated);
+      return updated;
+    });
+  }, []);
+
   const value: AppContextValue = {
     merchants, photos, filters, currentPage, expandedId,
     syncDot, syncBar, syncing, exporting,
     toast, lightboxSrc, filterPanelOpen,
     addModalOpen, editModalOpen, editingId, confirmModal,
+    importModalOpen, setImportModalOpen,
+    picList, addPic, removePic, picModalOpen, setPicModalOpen,
     setFilters, setCurrentPage, setExpandedId,
     setFilterPanelOpen, setAddModalOpen, setEditModalOpen,
     setEditingId, setConfirmModal,
     openLightbox, closeLightbox, showToast, showSyncBar,
     addMerchant, updateMerchant, deleteMerchant,
     addPhoto, deletePhoto,
+    importMerchants,
     syncNow, pushAllToSupabase, testSupabase, doExportExcel,
     getFilteredMerchants, getPhotos,
   };
